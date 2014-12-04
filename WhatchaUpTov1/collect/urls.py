@@ -8,5 +8,5 @@ from django.conf import settings
 urlpatterns = patterns('',
     #url(r'^$', views.index.as_view(), name='index'),
     url(r'^$', TemplateView.as_view(template_name='index.php'),
-    url(r'^post', views.buttonExample),
+    url(r'^post', views.facebook_data),
 )
