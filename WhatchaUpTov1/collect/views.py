@@ -3,11 +3,15 @@ from django.shortcuts import render, redirect
 from django.views.generic import View
 from django.views.generic import TemplateView
 from django.conf.urls import patterns
-
+from django.db.utils import IntegrityError
 from django.views.decorators.csrf import csrf_exempt
-from models import User, FB_User, FB_Likes
-
+import logging
+import random
 import re
+
+from models import User, FB_User, FB_Likes
+import managers
+
 #class index(TemplateView):
 #    template_name = 'index.php'
 
@@ -16,33 +20,47 @@ class index(View):
 
 @csrf_exempt
 def facebook_data(request):
+	logger = logging.getLogger(__name__)
+	#print 'RECEIVED REQUEST: ' + request.method
 
-    print 'RECEIVED REQUEST: ' + request.method
+	if request.method == 'POST':
+		user = User(userID = request.POST['userid'])
+		
+		try:
+			user.save()
+			logger.info("saved user %s", request.POST['userid'])
+		except IntegrityError, error:
+			logger.exception(error)
+			continue
 
-    if request.method == 'POST':
-        #print request
-        user = User(userID = request.POST['userid'])
-        #print user.userID
-        #print request.POST['username']
-        #user.save()
-        fb_user = FB_User(Id=user, FB_ID=request.POST['userid'],
-                          first_name=request.POST['username'], last_name=request.POST['username'],
-                          hometown=request.POST['hometown'], location=request.POST['local'],
-                          URL=request.POST['local'])
-        print user
-        #fb_user.save()
-        #print fb_user
-        #print request.POST['likes_cats']
-        categories = re.findall(r'\"(.+?)\"', request.POST['likes_cats'])
-        likes = re.findall(r'\"(.+?)\"', request.POST['likes'])
+		fb_user = FB_User(Id=user, FB_ID=request.POST['userid'],
+						  name=request.POST['username'], gender=request.POST['gender'],
+						  hometown=request.POST['hometown'], location=request.POST['local'],
+						  URL=request.POST['url'])
+		
+		try:
+			fb_user.save()
+			logger.info("saved user %s (%s).", request.POST['username'], request.POST['userid'])
+		except IntegrityError, error:
+			logger.exception(error)
+			continue
 
-        #print bool(len(categories)==len(likes))
-        for i in range(len(likes)):
-            fb_likes = FB_Likes(Id=fb_user, category= categories[i],
-                                name = likes[i] )
-        #    fb_likes.save()
+		categories = re.findall(r'\"(.+?)\"', request.POST['likes_cats'])
+		likes = re.findall(r'\"(.+?)\"', request.POST['likes'])
 
-        return HttpResponseRedirect('http://yahoo.com') 
-    else: #GET
-        print 'Nothing'
-        return HttpResponseRedirect('http://google.com') 
+		for i in range(len(likes)):
+			fb_likes = FB_Likes(Id=user, category= categories[i],
+								name = likes[i] )
+		    fb_likes.save()
+
+		# Check for handles, create each entry in corresponding model
+		# if exists
+		#if request.POST['twitter']=!'':
+		#	managers.get_twitter_user(user,request.POST['twitter'])
+		#if request.POST['twitter']=!'':
+		#  twitter_user = Twitter_User(Id=user)
+
+		return HttpResponseRedirect('http://yahoo.com') 
+	else: #GET
+		print 'Nothing'
+		return HttpResponseRedirect('http://google.com') 
