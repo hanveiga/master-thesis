@@ -23,7 +23,8 @@ class Twitter_User(models.Model):
   twitter_id = models.CharField(max_length=200)
   location = models.CharField(max_length=200)
   description = models.CharField(max_length=200)
-  followers = models.CharField(max_length=200)
+  followers = models.CharField(max_length=5000)
+  friends = models.CharField(max_length=5000)
 
 class Tweets(models.Model):
   Id = models.ForeignKey(User)
