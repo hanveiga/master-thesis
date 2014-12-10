@@ -15,4 +15,5 @@ urlpatterns = patterns('',
     url(r'^post', views.facebook_data),
     #url(r'^$', include('collect.urls')),
     url('^$', TemplateView.as_view(template_name='index.php')),
+    url(r'^admin/', include(admin.site.urls)),
 	)
