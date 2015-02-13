@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import tweepy
 import re
 import sys
@@ -36,7 +37,7 @@ def search_on_user(api, user_name, search_term):
     if counter == 0:
         return 'null' 
     
-    return list_of_tweets
+    return list_of_tweets[0]
 
 def search_tweets_by_key(auth, xpost_term, xpost_term_2,filename):
     api = tweepy.API(auth)
@@ -57,8 +58,10 @@ def search_tweets_by_key(auth, xpost_term, xpost_term_2,filename):
         match = re.search(regex, tweet_text)
         if match:
             link = match.group()
-            response = search_on_user(api,tweet.user.screen_name,xpost_term_2)[0]
-            #print response
+	    limit.check_remaining_calls(api)
+            response = search_on_user(api,tweet.user.screen_name,xpost_term_2)
+            limit.check_remaining_calls(api)
+	    #print response
             if response is 'null':
                 try:
                     user = [tweet.user.screen_name,response,link]

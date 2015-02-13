@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import urllib2
 import oembed
 from instagram.client import InstagramAPI
@@ -6,6 +7,7 @@ import sys
 def get_insta_user(short_link, debug=0):
 	""" Get instagram userid from a link posted on twitter """
 	try:
+		print short_link
 		response = urllib2.urlopen(short_link) # Some shortened url, eg: http://t.co/z8P2xNzT8k
 		url_destination = response.url
 
@@ -25,7 +27,7 @@ def get_insta_user(short_link, debug=0):
 	try:
 		media = api.media(media_id)
 		if debug:
-			print media.user.id
+		  print media.user.id
 		return [media.user.id, media.user.username]
 	except:
 		if debug:
