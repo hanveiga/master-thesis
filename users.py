@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import tweepy
 import twitter_config as tconf
 import re
@@ -26,7 +27,7 @@ api_instagram = InstagramAPI(client_id='d09ed38ad8f14bd7bc7fdf6e7ebd9340', clien
 
 def check_remaining_calls(api_tweet):
 	try:
-		remaining = int(api_tweet.last_response.getheader('x-rate-limit-remaining'))
+		remaining = int(api_tweet.last_response.headers['x-rate-limit-remaining'])
 		#print remaining
 		return remaining
 	except:
@@ -111,7 +112,8 @@ class Twitter_Profile(object):
 				print 'non english percentage: ', non_english/float(len(timeline)) 
 				if non_english/float(len(timeline)) > 0.2:
 					print 'Too little english in the feed'
-					raise Exception("Too little english in the feed")
+					#raise Exception("Too little english in the feed")
+					break
 		print "got twitter timeline"
 		return timeline
 
@@ -121,10 +123,10 @@ class Twitter_Profile(object):
 class Instagram_Profile(object):
 	def __init__(self, instagram_username):
 		#print instagram_username
-		search = api_instagram.user_search(q=instagram_username, count=1)[0]
+		#search = api_instagram.user_search(q=instagram_username, count=1)[0]
 		#print search.id
-		self.__username = search.id
-
+		self.__username = instagram_username
+		print instagram_username
 		self.profile = self.get_userprofile()
 		print "got insta user profile"
 		self.timeline = self.get_timeline()
