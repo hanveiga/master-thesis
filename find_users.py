@@ -48,6 +48,8 @@ def search_tweets_by_key(auth, xpost_term, xpost_term_2,filename):
     csv_file = open(filename+'.csv','a')
     csv_writer = csv.writer(csv_file,delimiter=';')
     
+    linking = []
+
     for tweet in c.items():
         limit.check_remaining_calls(api)
         tweet_text = tweet.text.encode('cp850', errors='replace').decode('cp850')
@@ -70,7 +72,7 @@ def search_tweets_by_key(auth, xpost_term, xpost_term_2,filename):
                     instagram_user = get_insta_user(response)
                     user = [tweet.user.screen_name,instagram_user[0],link]
                     print [tweet.user.screen_name,instagram_user[1],link]
-
+                    linking.append(user)
                     csv_writer.writerow(user)
                 except:
                     pass
