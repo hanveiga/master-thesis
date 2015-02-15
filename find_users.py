@@ -73,6 +73,9 @@ def search_tweets_by_key(auth, xpost_term, xpost_term_2,filename):
                 try:
                     print 'found instagram'
                     instagram_user = get_insta_user(response)
+                    if len(instagram_user[0]) < 2:
+                        print "name too short, probably error"
+                        continue
                     user = [tweet.user.screen_name,instagram_user[0],link]
                     print [tweet.user.screen_name,instagram_user[1],link]
                     linking.append(user)
