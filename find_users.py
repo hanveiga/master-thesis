@@ -63,23 +63,24 @@ def search_tweets_by_key(auth, xpost_term, xpost_term_2,filename):
             limit.check_remaining_calls(api)
 	    #print response
             if response is 'null':
-                try:
-                    user = [tweet.user.screen_name,response,link]
-                    csv_writer.writerow(user)
-                    print user
-                except:
-                    pass
+                pass
+                #try:
+                    #user = [tweet.user.screen_name,response,link]
+                    #csv_writer.writerow(user)
+                    #print user
+                #except:
+                #    pass
             else:
                 try:
                     print 'found instagram'
                     instagram_user = get_insta_user(response)
                     if len(instagram_user[0]) < 2:
                         print "name too short, probably error"
-                        continue
-                    user = [tweet.user.screen_name,instagram_user[0],link]
-                    print [tweet.user.screen_name,instagram_user[1],link]
-                    linking.append(user)
-                    csv_writer.writerow(user)
+                    else: 
+                        user = [tweet.user.screen_name,instagram_user[0],link]
+                        print [tweet.user.screen_name,instagram_user[1],link]
+                        linking.append(user)
+                        csv_writer.writerow(user)
                 except:
                     pass
 
