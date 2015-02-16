@@ -13,6 +13,7 @@ from sklearn.linear_model import LogisticRegression
 import itertools
 
 from sklearn.linear_model import LinearRegression
+from sklearn.naive_bayes import GaussianNB
 
 ''' Wrapper aroung sklearn to vectorize Annotation objects
 '''
@@ -32,11 +33,10 @@ class BasicVectorizer(object):
 ''' Annotation classifier base class. Subclass it and specify
     a vectorizer and a classifiers
 '''
-class HashtagClassifier(object):
+class SpendingsClassifier(object):
   def train(self, users):
     X = self.vectorizer.fit_transform(users)
     y = numpy.array([numpy.mean(filter(None,user.get_spendings())) for user in users])
-    print y
 
     self.classifier.fit(X, y)
 
@@ -44,7 +44,7 @@ class HashtagClassifier(object):
     X = self.vectorizer.transform(users)
     return self.classifier.predict(X)
 
-class NaiveRegression(HashtagClassifier):
+class NaiveRegression(SpendingsClassifier):
   def __init__(self):
     self.classifier = LinearRegression()
     self.vectorizer = BasicVectorizer()
@@ -53,5 +53,17 @@ class NaiveRegression(HashtagClassifier):
     Given features, give probability of observing the visit or not.
     Binary classifier
 '''
+class VenueClassifier(object):
+  def train(self, users, labels):
+    X = self.vectorizer.fit_transform(users)
 
+    self.classifier.fit(X.toarray(), labels)
 
+  def predict(self, users):
+    X = self.vectorizer.transform(users)
+    return self.classifier.predict(X.toarray())
+
+class NaiveClassifier(VenueClassifier):
+  def __init__(self):
+    self.classifier = GaussianNB()
+    self.vectorizer = BasicVectorizer()
