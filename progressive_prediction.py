@@ -80,6 +80,7 @@ def IncrementalLearning(user, dict_of_classifiers, initial_num_hash=500):
 	#print truncated_hashtags
 
 	#try:
+	print real_label
 	print truncated_hashtags[0:10]
 	for key, classifier in dict_of_classifiers.items():
 			#transformed = classifier.predict(truncated_hashtags)
@@ -87,8 +88,9 @@ def IncrementalLearning(user, dict_of_classifiers, initial_num_hash=500):
 			prediction = classifier.predict(truncated_hashtags)
 			user_error.append(np.abs(prediction - real_label[key]))
 
+	error = np.mean(user_error)
 	print 'Computed first vector'
-	incremental_error.append(user_error)
+	incremental_error.append(error)
 	#except:
 	#	print 'Did not compute first vector'
 
@@ -107,7 +109,8 @@ def IncrementalLearning(user, dict_of_classifiers, initial_num_hash=500):
 				  #list_of_testvectors.append(transformed)
 				  prediction = classifier.predict(truncated_hashtags)
 				  user_error.append(np.abs(prediction - real_label[key]))
-			  incremental_error.append(user_error)
+			  error = np.mean(user_error)
+			  incremental_error.append(error)
 			  reached_hundred = 0
 			else:
 			  pass
@@ -134,7 +137,7 @@ def run_crossvalidation(dataset, classifier_type, folds=10):
 
 	for train, test in folds:
 		trainset = [dataset[i] for i in train]
-		testset = [dataset[i] for i in test]
+		testset = [dataset[i] for i in test[0:2]]
 		error = get_error_incremental_learning(trainset, testset, classifier_type)
 
 	return error 
