@@ -95,18 +95,22 @@ def IncrementalLearning(user, dict_of_classifiers, initial_num_hash=500):
 	try:
 		
 		# Incremental prediction
-
+		reached_hundred = 0
 		for hashtag in user_hashtags[initial_num_hash:]:
 			print hashtag
 			truncated_hashtags.append(hashtag)
-			list_of_testvectors = []
 			user_error = []
-			for key, classifier in dict_of_classifiers.items():
-				#transformed = classifier.fit(truncated_hashtags)
-				#list_of_testvectors.append(transformed)
-				prediction = classifier.predict(truncated_hashtags)
-				user_error.append(np.abs(prediction - real_label[key]))
-			incremental_error.append(user_error)
+			reached_hundred += 1
+			if reached_hundred % 100 == 0:
+			  for key, classifier in dict_of_classifiers.items():
+				  #transformed = classifier.fit(truncated_hashtags)
+				  #list_of_testvectors.append(transformed)
+				  prediction = classifier.predict(truncated_hashtags)
+				  user_error.append(np.abs(prediction - real_label[key]))
+			  incremental_error.append(user_error)
+			  reached_hundred = 0
+			else:
+			  pass
 		print 'computed the incremental vector'
 	except:
 		print 'Did not compute the rest of the vectors'
@@ -130,7 +134,7 @@ def run_crossvalidation(dataset, classifier_type, folds=10):
 
 	for train, test in folds:
 		trainset = [dataset[i] for i in train]
-		testset = [dataset[i] for i in test[0:2]]
+		testset = [dataset[i] for i in test]
 		error = get_error_incremental_learning(trainset, testset, classifier_type)
 
 	return error 
