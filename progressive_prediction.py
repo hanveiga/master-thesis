@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from sklearn import cross_validation
 import cPickle as pickle
 import sys
@@ -79,10 +80,10 @@ def IncrementalLearning(user, dict_of_classifiers, initial_num_hash=500):
 	#print truncated_hashtags
 
 	#try:
+	print truncated_hashtags[0:10]
 	for key, classifier in dict_of_classifiers.items():
 			#transformed = classifier.predict(truncated_hashtags)
 			#list_of_testvectors.append(transformed)
-			print truncated_hashtags
 			prediction = classifier.predict(truncated_hashtags)
 			user_error.append(np.abs(prediction - real_label[key]))
 
@@ -95,7 +96,7 @@ def IncrementalLearning(user, dict_of_classifiers, initial_num_hash=500):
 		
 		# Incremental prediction
 
-		for hashtag in user_hashtags:
+		for hashtag in user_hashtags[initial_num_hash:]:
 			print hashtag
 			truncated_hashtags.append(hashtag)
 			list_of_testvectors = []
@@ -129,7 +130,7 @@ def run_crossvalidation(dataset, classifier_type, folds=10):
 
 	for train, test in folds:
 		trainset = [dataset[i] for i in train]
-		testset = [dataset[i] for i in test]
+		testset = [dataset[i] for i in test[0:2]]
 		error = get_error_incremental_learning(trainset, testset, classifier_type)
 
 	return error 
@@ -145,3 +146,4 @@ if __name__ =='__main__':
 	#	print val.__dict__
 	errors = run_crossvalidation(full_data, ProgressiveClassifier(), folds=1)
 	print errors
+	pickle.dump(errors,open('error_matrix.pkl','wb'))
