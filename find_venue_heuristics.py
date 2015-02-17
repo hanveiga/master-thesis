@@ -17,7 +17,7 @@ def get_venue_type_visited(user):
 
 	return list_venue_types
 
-def venue_threshold(dataset):
+def get_top_venues(dataset, n=20):
 	""" Find venue types which are well represented in our dataset
 	This means, enough users checked in (but not too many have checked in)
 	eg: 30 out of 100 users have visited these venues """
@@ -38,10 +38,10 @@ def venue_threshold(dataset):
 	for key in category_counter.keys():
 		category_counter[key] = category_counter[key]/float(dataset_size)
 
-	return category_counter.most_common(60)
+	return category_counter
 
 if __name__ == '__main__':
 	dataset = pickle.load(open(sys.argv[1],'rb'))
-	breakdown = venue_threshold(dataset)
+	breakdown = top_venues(dataset)
 	for key, val in breakdown:
 		print '| %s | %s |' %(key, val*100)
