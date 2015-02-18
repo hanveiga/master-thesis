@@ -30,10 +30,11 @@ def train_classifiers(dataset, classifier):
 	#list_of_classifiers = []
 	dict_of_classifiers = {}
 
-	for key, value in top_venues.most_common(10):
+	for key, value in top_venues.most_common(30):
 		# train classifier
 		#list_of_classifiers.append(classifier)
 		ylabels = get_visited_venue_labels(dataset, key)
+		#print ylabels
 		classifier_ven = classifier
 		classifier_ven.train(dataset,ylabels)
 		dict_of_classifiers[key] = classifier_ven
@@ -85,7 +86,8 @@ def IncrementalLearning(user, dict_of_classifiers, initial_num_hash=500):
 	for key, classifier in dict_of_classifiers.items():
 			#transformed = classifier.predict(truncated_hashtags)
 			#list_of_testvectors.append(transformed)
-			prediction = classifier.predict(truncated_hashtags)
+			prediction = classifier.predict([truncated_hashtags])
+			print prediction
 			user_error.append(np.abs(prediction - real_label[key]))
 
 	error = np.sum(user_error)
@@ -99,7 +101,7 @@ def IncrementalLearning(user, dict_of_classifiers, initial_num_hash=500):
 		# Incremental prediction
 		reached_hundred = 0
 		for hashtag in user_hashtags[initial_num_hash:]:
-			print hashtag
+			#print hashtag
 			truncated_hashtags.append(hashtag)
 			user_error = []
 			reached_hundred += 1
@@ -107,9 +109,11 @@ def IncrementalLearning(user, dict_of_classifiers, initial_num_hash=500):
 			  for key, classifier in dict_of_classifiers.items():
 				  #transformed = classifier.fit(truncated_hashtags)
 				  #list_of_testvectors.append(transformed)
-				  prediction = classifier.predict(truncated_hashtags)
+				  prediction = classifier.predict([truncated_hashtags])
+				  print prediction
 				  user_error.append(np.abs(prediction - real_label[key]))
 			  error = np.sum(user_error)
+			  #print user_error
 			  incremental_error.append(error)
 			  reached_hundred = 0
 			else:
@@ -133,19 +137,22 @@ def get_error_incremental_learning(train, test, classifier_type):
 	return errors
 
 def run_crossvalidation(dataset, classifier_type, folds=10):
-	folds = cross_validation.KFold(len(dataset),n_folds=2)	
+	folds = cross_validation.KFold(len(dataset),n_folds=20)	
+
+	errors = []
 
 	for train, test in folds:
 		trainset = [dataset[i] for i in train]
-		testset = [dataset[i] for i in test[0:1]]
+		testset = [dataset[i] for i in test]
 		error = get_error_incremental_learning(trainset, testset, classifier_type)
+		errors.append(error)
 
-	return error 
+	return errors
 
 if __name__ =='__main__':
 	full_data = pickle.load(open(sys.argv[1],'rb'))
 
-	#list_class = train_classifiers(full_data,NaiveClassifier())
+	#list_class = train_classifiers(full_data,ProgressiveClassifier())
 
 	#for key, val in list_class.items():
 	#	print key

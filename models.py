@@ -54,6 +54,7 @@ class SpendingsClassifier(object):
 
   def predict(self, users):
     X = self.vectorizer.transform(users)
+    print X
     return self.classifier.predict(X)
 
 class NaiveRegression(SpendingsClassifier):
@@ -90,7 +91,7 @@ class ProgressiveClassifier(VenueClassifier):
     return self.classifier.predict(X.toarray())
 
 ''' Generating labels '''
-def get_visited_venue_labels(dataset, venue_types):
+def get_visited_venue_labels(dataset, venue_type):
   """ If user has visited venue_type, label = 1, otherwise = 0 """
 
   venue_labels = []
@@ -98,7 +99,6 @@ def get_visited_venue_labels(dataset, venue_types):
   for user in dataset:
     user_visited = 0
     for checkin in user.foursquare:
-      for venue_type in venue_types:
         if venue_type in checkin.lowest_type:
           user_visited = 1
           break
