@@ -157,8 +157,6 @@ def get_error_incremental_learning(train, test, classifier_type):
 	# populate error_matrix
 	for j in range(user_num):
 		for i in range(len(errors[j])):
-			print 'error', errors[j]
-			print 'error inside', errors[j][i]
 			error_matrix[i,j] = errors[j][i]
 
 
@@ -174,7 +172,6 @@ def run_crossvalidation(dataset, classifier_type, folds=10):
 		testset = [dataset[i] for i in test]
 		error = get_error_incremental_learning(trainset, testset, classifier_type)
 		errors.append(error)
-		break
 
 	# make the error matrix...
 	return errors
