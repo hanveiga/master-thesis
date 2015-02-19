@@ -137,7 +137,7 @@ def get_error_incremental_learning(train, test, classifier_type):
 	return errors
 
 def run_crossvalidation(dataset, classifier_type, folds=10):
-	folds = cross_validation.KFold(len(dataset),n_folds=20)	
+	folds = cross_validation.KFold(len(dataset),n_folds=40)	
 
 	errors = []
 
@@ -146,6 +146,7 @@ def run_crossvalidation(dataset, classifier_type, folds=10):
 		testset = [dataset[i] for i in test]
 		error = get_error_incremental_learning(trainset, testset, classifier_type)
 		errors.append(error)
+		break
 
 	return errors
 
@@ -160,4 +161,4 @@ if __name__ =='__main__':
 	#	print val.__dict__
 	errors = run_crossvalidation(full_data, ProgressiveClassifier(), folds=1)
 	print errors
-	pickle.dump(errors,open('error_matrix.pkl','wb'))
+	pickle.dump(errors,open('error_matrix_1.pkl','wb'))
