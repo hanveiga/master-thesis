@@ -31,7 +31,7 @@ def fill_foursquare_data(pickle_name, output_filepath):
 	jb.foursquare.check_ins = venues_list
 	pickle.dump(jb,open(output_filepath+pickle_name+'.pkl','wb'))	
 
-def process_files(input_filepath):
+def process_files(input_filepath, output_filepath):
 	filenames = os.listdir(input_filepath)
 	existing_files = os.listdir(input_filepath+'post/')
 	for filename in filenames:
