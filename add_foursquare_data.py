@@ -4,8 +4,8 @@ import tweepy
 import numpy as np
 import sys
 
-def fill_foursquare_data(pickle_name, output_filepath):
-	jb = pickle.load(open('data/'+ pickle_name + '.pkl', 'rb'))
+def fill_foursquare_data(pickle_name, input_filepath, output_filepath):
+	jb = pickle.load(open(input_filepath + pickle_name + '.pkl', 'rb'))
 	venues_list = []
 	check_in_dates = []
 
@@ -44,7 +44,7 @@ def process_files(input_filepath, output_filepath):
 		if info.st_size > 4000 and filename!='post':
 	 		nameoffile = re.split('\.',filename)[0]
 			print nameoffile
-			fill_foursquare_data(nameoffile, output_filepath)
+			fill_foursquare_data(nameoffile, input_filepath, output_filepath)
 
 if __name__ == '__main__':
 	process_files(sys.argv[1],sys.argv[2])
