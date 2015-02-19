@@ -105,7 +105,7 @@ def IncrementalLearning(user, dict_of_classifiers, initial_num_hash=500):
 			truncated_hashtags.append(hashtag)
 			user_error = []
 			reached_hundred += 1
-			if reached_hundred % 100 == 0:
+			if reached_hundred % 50 == 0:
 			  for key, classifier in dict_of_classifiers.items():
 				  #transformed = classifier.fit(truncated_hashtags)
 				  #list_of_testvectors.append(transformed)
@@ -134,7 +134,35 @@ def get_error_incremental_learning(train, test, classifier_type):
 		error = IncrementalLearning(user,list_of_classifiers,initial_num_hash=500)
 		errors.append(error)
 
-	return errors
+	max_length = 0
+	user_num = len(errors)
+	for error in errors:
+		if len(error) > max_length:
+			max_length = len(error)
+
+	error_matrix = np.empty((max_length,user_num))
+	error_matrix[:] = np.nan
+
+#	i = 0
+#	j = 0
+#	for error in errors:
+#		print error_matrix.shape
+#		print error
+#		for elem in error:
+#			print elem
+#			error_matrix[j,i] = elem
+#			j = j + 1
+#		i = i + 1
+
+	# populate error_matrix
+	for j in range(user_num):
+		for i in range(len(errors[j])):
+			print 'error', errors[j]
+			print 'error inside', errors[j][i]
+			error_matrix[i,j] = errors[j][i]
+
+
+	return error_matrix
 
 def run_crossvalidation(dataset, classifier_type, folds=10):
 	folds = cross_validation.KFold(len(dataset),n_folds=40)	
@@ -148,6 +176,7 @@ def run_crossvalidation(dataset, classifier_type, folds=10):
 		errors.append(error)
 		break
 
+	# make the error matrix...
 	return errors
 
 if __name__ =='__main__':
