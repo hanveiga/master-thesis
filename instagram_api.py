@@ -4,12 +4,14 @@ import oembed
 from instagram.client import InstagramAPI
 import sys
 
-def get_insta_user(short_link, debug=0):
+def get_insta_user(short_link, debug=1):
 	""" Get instagram userid from a link posted on twitter """
 	try:
 		print short_link
 		response = urllib2.urlopen(short_link) # Some shortened url, eg: http://t.co/z8P2xNzT8k
-		url_destination = response.url
+		#print response.__dict__
+		url_destination_https = response.url
+		url_destination = url_destination_https.replace('https','http',1)
 
 		# from link get the media_id
 		consumer = oembed.OEmbedConsumer()
@@ -17,6 +19,8 @@ def get_insta_user(short_link, debug=0):
 		consumer.addEndpoint(endpoint)
 		response = consumer.embed(url_destination)
 		media_id = response['media_id']
+
+		print media_id
 
 		api = InstagramAPI(client_id='d09ed38ad8f14bd7bc7fdf6e7ebd9340', client_secret='0de686fbad2543968159c573f33e9409')
 	except:
