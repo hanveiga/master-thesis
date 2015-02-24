@@ -179,12 +179,19 @@ def run_crossvalidation(dataset, classifier_type, folds=10):
 if __name__ =='__main__':
 	full_data = pickle.load(open(sys.argv[1],'rb'))
 
+	full_data_2 = []
+	for user in full_data:
+		if len(user.twitter) >= 1000:
+			full_data_2.append(user)
+		else:
+			pass
+
 	#list_class = train_classifiers(full_data,ProgressiveClassifier())
 
 	#for key, val in list_class.items():
 	#	print key
 	#	print val
 	#	print val.__dict__
-	errors = run_crossvalidation(full_data, ProgressiveClassifier(), folds=1)
+	errors = run_crossvalidation(full_data_2, ProgressiveClassifier(), folds=1)
 	print errors
 	pickle.dump(errors,open('error_matrix_1.pkl','wb'))
