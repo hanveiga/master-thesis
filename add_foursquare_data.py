@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import foursquare_checkin as fs
 from users import *
 import tweepy
@@ -33,7 +34,7 @@ def fill_foursquare_data(pickle_name, input_filepath, output_filepath):
 
 def process_files(input_filepath, output_filepath):
 	filenames = os.listdir(input_filepath)
-	existing_files = os.listdir(input_filepath+'post/')
+	existing_files = os.listdir(output_filepath)
 	for filename in filenames:
 		print filename
 		if filename in existing_files:
