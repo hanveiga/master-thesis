@@ -4,6 +4,12 @@ from collections import Counter
 
 from data import *
 
+# think about how to do this less sloppily
+mapping_subcategory = pickle.load(open('useful/mapmain.pkl','rb'))
+mapping_maincategory = pickle.load(open('useful/mapsub.pkl','rb'))
+mapping_id_name = pickle.load(open('useful/mappingnameid.pkl','rb'))
+mapping_name_id = {v: k for k, v in mapping_id_name.items()}
+
 def get_venue_type_visited(user):
 
 	list_venue_types = []
@@ -15,9 +21,17 @@ def get_venue_type_visited(user):
 			else:
 				pass
 
+	for venue in list_venue_types:
+		top_category = mapping_id_name[mapping_maincategory[mapping_name_id[venue]]]
+		sub_category = mapping_id_name[mapping_subcategory[mapping_name_id[venue]]]
+		if top_category not in list_venue_types:
+			list_venue_types.append(top_category)
+		if sub_category not in list_venue_types:
+			list_venue_types.append(sub_category)
+
 	return list_venue_types
 
-def get_top_venues(dataset, n=20):
+def get_top_venues(dataset):
 	""" Find venue types which are well represented in our dataset
 	This means, enough users checked in (but not too many have checked in)
 	eg: 30 out of 100 users have visited these venues """
@@ -42,6 +56,6 @@ def get_top_venues(dataset, n=20):
 
 if __name__ == '__main__':
 	dataset = pickle.load(open(sys.argv[1],'rb'))
-	breakdown = top_venues(dataset)
-	for key, val in breakdown:
+	breakdown = get_top_venues(dataset)
+	for key, val in breakdown.most_common(100):
 		print '| %s | %s |' %(key, val*100)
