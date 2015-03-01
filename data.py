@@ -1,5 +1,7 @@
+# -*- coding: utf-8 -*-
 import cPickle as pickle
 import os
+import sys
 
 class User(object):
 	def __init__(self, unpickled):
@@ -39,9 +41,9 @@ class User(object):
 	def __get_instaphotos(self, unpickled):
 		insta_timeline = []
 
-		#for raw_photo in unpickled.instagram.timeline:
-		#	photo = Tweet(raw_photo)
-		#	insta_timeline.append(photo)
+		for raw_photo in unpickled.instagram.timeline[0]:
+			photo = Instaphoto(raw_photo)
+			insta_timeline.append(photo)
 
 		return insta_timeline
 
@@ -59,6 +61,9 @@ class User(object):
 
 	def get_all_hashtags(self):
 		return [hashtag for tweet in self.twitter for hashtag in tweet.hashtags]
+
+	def get_instagram_hashtags(self):
+		return [hashtag for instaphoto in self.instagram for hashtag in instaphoto.hashtags]
 
 	def get_spendings(self):
 		return [checkin.price for checkin in self.foursquare]
@@ -110,11 +115,25 @@ class Checkin(object):
 
 class Instaphoto(object):
 	def __init__(self, instaphoto_raw):
-		return instaphoto_raw
+		try:
+		  self.text = instaphoto_raw.caption.text.encode('cp850', errors='replace').decode('cp850')
+		except:
+		  self.text = ''
+		try:
+		  self.hashtags = [tag.name.encode('cp850', errors='replace').decode('cp850') for tag in instaphoto_raw.tags]
+		except:
+		  self.hashtags = []
+		self.url = instaphoto_raw.link
+		try:
+		  self.geo = instaphoto_raw.location
+		except:
+		  self.geo = None
+		self.created_at = instaphoto_raw.created_time
 #		self.
 #		self.text
 #		self.hashtags
 #		self.geo
+
 
 def load_raw_users(filepath, userlist):
 	users = []
@@ -137,4 +156,4 @@ if __name__=='__main__':
 	#print user.get_all_hashtags()
 	#print user.get_spendings()
 
-	make_dataset('C:\\Users\\Maria\\Desktop\\thesis\\data\\post\\')
+	make_dataset(sys.argv[1])
