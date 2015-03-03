@@ -110,6 +110,52 @@ def IncrementalLearning(user, dict_of_classifiers, initial_num_hash=100):
 
 	return incremental_error
 
+def IncrementalLearningTweets(user, dict_of_classifiers, initial_num_tweets=100):
+	random.shuffle(user.twitter)
+
+	truncated_tweets = [ tweet.text for tweet in user.twitter[:initial_num_tweets]]
+
+	venue_types = dict_of_classifiers.keys()
+
+	real_label = get_real_labels(user,venue_types)
+
+	#try:
+	user_error = []
+	incremental_error = []
+
+	print real_label
+	print truncated_hashtags[0:10]
+	for key, classifier in dict_of_classifiers.items():
+			prediction = classifier.predict([truncated_tweets])
+			user_error.append(np.abs(prediction - real_label[key]))
+
+	error = np.sum(user_error)
+
+	incremental_error.append(error)
+
+	try:
+		# Incremental prediction
+		increment = 0
+		for tweet in user.twitter[initial_num_hash:]:
+			#print hashtag
+			truncated_tweets.append(tweet.text)
+			user_error = []
+			increment += 1
+			if increment % 50 == 0:
+			  for key, classifier in dict_of_classifiers.items():
+				  prediction = classifier.predict([truncated_tweets])
+				  user_error.append(np.abs(prediction - real_label[key]))
+			  error = np.sum(user_error)
+			  incremental_error.append(error)
+			  increment = 0
+			else:
+			  pass
+		print 'computed the incremental vector'
+	except:
+		print 'Did not compute the rest of the vectors'
+
+	return incremental_error
+
 def get_error_incremental_learning(train, test, classifier_type, list_of_venues):
 	# pass a matrix back, users x incrementals
 
