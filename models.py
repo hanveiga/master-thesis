@@ -11,6 +11,7 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.linear_model import LogisticRegression
 import itertools
+import re
 
 from sklearn.linear_model import LinearRegression
 from sklearn.naive_bayes import GaussianNB
@@ -41,6 +42,30 @@ class RawVectorizer(object):
     return self.vectorizer.transform(
       [' '.join(user) for user in users])
 
+
+class TweetsVectorizer(object):
+  def __init__(self):
+    self.vectorizer = CountVectorizer()
+
+  def fit_transform(self, users):
+    #return self.vectorizer.fit_transform(
+    #  [ ' '.join(user.twitter) for user in users])
+    join_tweets = []
+    for user in users:
+      join_tweets.append([''.join(remove_tweet_noise(tweet.text)) for tweet in user.twitter])
+    #print join_tweets
+    #print len(join_tweets)
+    return self.vectorizer.fit_transform( [''.join(usertweets) for usertweets in join_tweets] )
+
+  def transform(self, users):
+    #return self.vectorizer.transform(
+    #  [ ' '.join(tweet.text) for user in users for tweet in user.twitter])
+    join_tweets = []
+    for user in users:
+      join_tweets.append([''.join(remove_tweet_noise(tweet.text)) for tweet in user.twitter])
+    #print join_tweets
+    #print len(join_tweets)
+    return self.vectorizer.transform( [''.join(usertweets) for usertweets in join_tweets] )
 
 ''' Annotation classifier base class. Subclass it and specify
     a vectorizer and a classifiers
@@ -90,7 +115,19 @@ class ProgressiveClassifier(VenueClassifier):
     X = self.vectorizer.transform(users)
     return self.classifier.predict(X.toarray())
 
-''' Generating labels '''
+class ProgressiveTweetClassifier(VenueClassifier):
+  def __init__(self):
+    self.classifier = GaussianNB()
+    self.vectorizer = TweetsVectorizer()
+
+  def predict(self,users):
+    X = self.vectorizer.transform(users)
+    return self.classifier.predict(X.toarray())
+
+
+''' 
+    Generating labels
+'''
 def get_visited_venue_labels(dataset, venue_type):
   """ If user has visited venue_type, label = 1, otherwise = 0 """
 
@@ -110,3 +147,14 @@ def get_visited_venue_labels(dataset, venue_type):
       venue_labels.append(0)
 
   return venue_labels
+
+def remove_tweet_noise(tweet_text):
+  # remove mentions:
+  mentions = re.findall(r'@\S+', tweet_text)
+  links = re.findall(r'https?://[^\s<>"]+|www\.[^\s<>"]+', tweet_text)
+
+  tweet_words = tweet_text.split()
+  
+  tweet_text_denoised = ' '.join([word for word in tweet_words if word not in links+mentions])
+
+  return tweet_text_denoised
