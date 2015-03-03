@@ -48,23 +48,19 @@ class TweetsVectorizer(object):
     self.vectorizer = CountVectorizer()
 
   def fit_transform(self, users):
-    #return self.vectorizer.fit_transform(
-    #  [ ' '.join(user.twitter) for user in users])
     join_tweets = []
-    for user in users:
-      join_tweets.append([''.join(remove_tweet_noise(tweet.text)) for tweet in user.twitter])
-    #print join_tweets
-    #print len(join_tweets)
-    return self.vectorizer.fit_transform( [''.join(usertweets) for usertweets in join_tweets] )
 
-  def transform(self, users):
-    #return self.vectorizer.transform(
-    #  [ ' '.join(tweet.text) for user in users for tweet in user.twitter])
-    join_tweets = []
     for user in users:
       join_tweets.append([''.join(remove_tweet_noise(tweet.text)) for tweet in user.twitter])
-    #print join_tweets
-    #print len(join_tweets)
+
+    return self.vectorizer.fit_transform([''.join(usertweets) for usertweets in join_tweets])
+
+  def transform(self, users_list_of_tweets):
+    join_tweets = []
+
+    for user in users_list_of_tweets:
+      join_tweets.append([''.join(remove_tweet_noise(tweet)) for tweet in user])
+
     return self.vectorizer.transform( [''.join(usertweets) for usertweets in join_tweets] )
 
 ''' Annotation classifier base class. Subclass it and specify
@@ -120,8 +116,9 @@ class ProgressiveTweetClassifier(VenueClassifier):
     self.classifier = GaussianNB()
     self.vectorizer = TweetsVectorizer()
 
-  def predict(self,users):
-    X = self.vectorizer.transform(users)
+  def predict(self,list_of_tweets):
+    X = self.vectorizer.transform(list_of_tweets)
+    
     return self.classifier.predict(X.toarray())
 
 
