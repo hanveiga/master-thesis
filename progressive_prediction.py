@@ -9,7 +9,7 @@ import models
 from data import *
 from find_venue_heuristics import get_top_venues
 
-from models import get_visited_venue_labels, ProgressiveClassifier
+from models import get_visited_venue_labels, ProgressiveClassifier, ProgressiveTweetClassifier
 
 # need several classifiers
 
@@ -72,7 +72,6 @@ def IncrementalLearning(user, dict_of_classifiers, initial_num_hash=100):
 	real_label = get_real_labels(user,venue_types)
 
 	# First prediction
-
 	#try:
 	user_error = []
 	incremental_error = []
@@ -111,9 +110,10 @@ def IncrementalLearning(user, dict_of_classifiers, initial_num_hash=100):
 	return incremental_error
 
 def IncrementalLearningTweets(user, dict_of_classifiers, initial_num_tweets=100):
+	# Error per venue type
 	random.shuffle(user.twitter)
 
-	truncated_tweets = [ tweet.text for tweet in user.twitter[:initial_num_tweets]]
+	truncated_tweets = [ tweet for tweet in user.twitter[:initial_num_tweets]]
 
 	venue_types = dict_of_classifiers.keys()
 
@@ -124,7 +124,8 @@ def IncrementalLearningTweets(user, dict_of_classifiers, initial_num_tweets=100)
 	incremental_error = []
 
 	print real_label
-	print truncated_hashtags[0:10]
+	for tweet in truncated_tweets[0:10]:
+		print tweet.text
 	for key, classifier in dict_of_classifiers.items():
 			prediction = classifier.predict([truncated_tweets])
 			user_error.append(np.abs(prediction - real_label[key]))
@@ -133,15 +134,15 @@ def IncrementalLearningTweets(user, dict_of_classifiers, initial_num_tweets=100)
 
 	incremental_error.append(error)
 
-	try:
-		# Incremental prediction
-		increment = 0
-		for tweet in user.twitter[initial_num_hash:]:
+	# Incremental prediction
+	increment = 0
+	for tweet in user.twitter[initial_num_tweets:]:
 			#print hashtag
-			truncated_tweets.append(tweet.text)
+			truncated_tweets.append(tweet)
 			user_error = []
 			increment += 1
 			if increment % 50 == 0:
+			  print len(truncated_tweets)
 			  for key, classifier in dict_of_classifiers.items():
 				  prediction = classifier.predict([truncated_tweets])
 				  user_error.append(np.abs(prediction - real_label[key]))
@@ -150,20 +151,19 @@ def IncrementalLearningTweets(user, dict_of_classifiers, initial_num_tweets=100)
 			  increment = 0
 			else:
 			  pass
-		print 'computed the incremental vector'
-	except:
-		print 'Did not compute the rest of the vectors'
+	print 'computed the incremental vector'
+	#except:
+	#	print 'Did not compute the rest of the vectors'
 
 	return incremental_error
 
 def get_error_incremental_learning(train, test, classifier_type, list_of_venues):
 	# pass a matrix back, users x incrementals
-
 	list_of_classifiers = train_classifiers(train, classifier_type, list_of_venues)
 
 	errors = []
 	for user in test:
-		error = IncrementalLearning(user,list_of_classifiers,initial_num_hash=10)
+		error = IncrementalLearningTweets(user,list_of_classifiers)
 		errors.append(error)
 
 	max_length = 0
@@ -188,11 +188,16 @@ def run_crossvalidation(dataset, classifier_type, list_of_venues, folds=10):
 
 	errors = []
 
+	count = 0
 	for train, test in folds:
 		trainset = [dataset[i] for i in train]
 		testset = [dataset[i] for i in test]
 		error = get_error_incremental_learning(trainset, testset, classifier_type, list_of_venues)
+		#pickle.dump(error,open('error_'+ str(count) + '.pkl', 'wb'))
+#		error = []
+#		count = count + 1
 		errors.append(error)
+#		break
 
 	return errors
 
@@ -201,7 +206,7 @@ if __name__ =='__main__':
 
 	full_data_2 = []
 	for user in full_data:
-		if len(user.get_all_hashtags()) >= 1200:
+		if len(user.twitter) >= 2500:
 			full_data_2.append(user)
 		else:
 			pass
@@ -209,8 +214,8 @@ if __name__ =='__main__':
 
 	venue_counts = get_top_venues(full_data_2)
 	# generate the venue classifier solely based on the frequency of visits
-	list_of_venues = venue_counts.most_common()[60:80]
+	list_of_venues = venue_counts.most_common()[80:85]
 	print list_of_venues
 
-	errors = run_crossvalidation(full_data_2, ProgressiveClassifier(), list_of_venues, folds=20)
-	pickle.dump(errors,open('error_matrix_randomsampled.pkl','wb'))
+	errors = run_crossvalidation(full_data_2, ProgressiveTweetClassifier(), list_of_venues, folds=10)
+	pickle.dump(errors,open('error_matrix_tfidf.pkl','wb'))

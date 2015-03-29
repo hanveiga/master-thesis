@@ -173,7 +173,7 @@ def run(filepath):
 	statistics = get_statistics(user_list)
 	pickle.dump(statistics,open('statistics'+'.pkl','wb'))
 	get_facts(statistics)
-	generate_statistics(statistics)
+	#generate_statistics(statistics)
 
 if __name__=='__main__':
 	run('data/post/')

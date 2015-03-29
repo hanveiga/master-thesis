@@ -57,5 +57,5 @@ def get_top_venues(dataset):
 if __name__ == '__main__':
 	dataset = pickle.load(open(sys.argv[1],'rb'))
 	breakdown = get_top_venues(dataset)
-	for key, val in breakdown.most_common(100):
+	for key, val in breakdown.most_common(200):
 		print '| %s | %s |' %(key, val*100)

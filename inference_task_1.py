@@ -2,6 +2,9 @@ from sklearn import cross_validation
 import cPickle as pickle
 import sys
 import numpy as np
+from find_venue_heuristics import get_top_venues
+from find_venue_heuristics import get_venue_type_visited
+from smote import oversampler
 
 import models
 from data import *
@@ -47,10 +50,11 @@ def get_venue_labels(dataset, venue_types):
 	venue_labels = []
 
 	for user in dataset:
-		user_visited = 0
+		"""user_visited = 0
 		for checkin in user.foursquare:
 			for venue_type in venue_types:
-				if venue_type in checkin.lowest_type:
+				all_visits = checkin.lowest_type
+				if venue_type in all_visits:
 					user_visited = 1
 					break
 				else:
@@ -59,12 +63,25 @@ def get_venue_labels(dataset, venue_types):
 			venue_labels.append(1)
 		else:
 			venue_labels.append(0)
+		"""
+		user_visited = 0
+		allvisits = get_venue_type_visited(user)
+		for venue_type in venue_types:
+			if venue_type in allvisits:
+				user_visited = 1
+		venue_labels.append(user_visited)
 
 	return venue_labels
 
 def measure_venue_error(train, test, trainlabels, testlabels, classifier):
 	""" Measure recall and precision, true negative rate, accuracy """
 	classifier.train(train, trainlabels)
+
+	feature_names = classifier.vectorizer.vectorizer.get_feature_names()
+	for feature_name, feature_imp in zip(feature_names,classifier.classifier.feature_importances_):
+		if feature_imp > 0.01:
+			print '%s, %s' %(feature_name , feature_imp)
+
 	predictions = classifier.predict(test)
 	
 	false_positives = 0
@@ -101,21 +118,29 @@ def measure_venue_error(train, test, trainlabels, testlabels, classifier):
 
 def venue_inference(dataset, classifier, venue_type, n_folds=10):
 	ylabels = get_venue_labels(dataset, venue_type)
-	print len([i for i in ylabels if i == 1])
-	folds = cross_validation.KFold(len(dataset), n_folds=n_folds)
+	print len([i for i in ylabels if i == 1])/float(len(ylabels))
+	#folds = cross_validation.KFold(len(dataset), n_folds=n_folds)
+	folds = oversampler(ylabels, threshold=0.40, n_folds = n_folds )
 
 	rmse = 0
 
 	errors = []
+	count = 0
 	for train, test in folds:
 		trainset = [dataset[i] for i in train]
 		testset = [dataset[i] for i in test]
 		trainlabels = [ylabels[i] for i in train]
 		testlabels = [ylabels[i] for i in test]
 		errors.append(measure_venue_error(trainset, testset, trainlabels, testlabels, classifier))
+		count = count + 1
+		if count > 3:
+			break
 
-	#show_most_informative_features(classifier.vectorizer.vectorizer, classifier.classifier, n=20)
-	#show_parameters(classifier.classifier)
+#	show_most_informative_features(classifier.vectorizer.vectorizer, classifier.classifier, n=20)
+#	show_parameters(classifier.classifier)
+	#this shit makes no sense o_o
+
+
 	return errors
 
 def show_most_informative_features(vectorizer, clf, n=20):
@@ -131,13 +156,32 @@ def show_parameters(clf):
 if __name__ =='__main__':
 	errors = {}
 	full_data = pickle.load(open(sys.argv[1],'rb'))
+
+	top_venues = get_top_venues(full_data)
+
+	list_of_venues = []
+	for venue, value in top_venues.most_common()[60:80]:
+		list_of_venues.append(venue)
+
 	#for folds in [10,20,40,100]:
 	#		errors[str(folds)] = first_inference(full_data,models.NaiveRegression(),folds)
 	#print errors
 
-	for venues in [['Gym / Fitness Center'],['Vegetarian / Vegan Restaurant', 'Vegetarian'], ['High School'], ['Night Club'], ['University'], ['Art Museum'], ['Rock Club']]:
-		print "Venue: ", venues
-		for folds in [10]:
-			errors = venue_inference(full_data, models.NaiveClassifier(), venues, n_folds= folds)
-			print folds
-			print np.nanmean(errors,0)
+	full_data_2 = []
+	for user in full_data:
+		if len(user.twitter) >= 1000:
+			full_data_2.append(user)
+		else:
+			pass
+	print len(full_data_2)
+
+	list_of_venues = ['Church' ,'Wine Bar', 'Gym', 'Gym / Fitness Center', 'Concert Hall', 'Theater', 'Resort', 'Museum', 'Performing Arts Venue', 'College & University', 'Vegetarian / Vegan Restaurant']
+
+#	for venues in [['Gym / Fitness Center'],['Vegetarian / Vegan Restaurant', 'Vegetarian'], ['High School'], ['Night Club'], ['University'], ['Art Museum'], ['Rock Club']]:
+	for classifier in [models.EnsembleClassifierFreeVectorizerTweet(models.TweetsLemmatizedVectorizer()), models.EnsembleClassifierFreeVectorizerTweet(models.TweetsInstagramLemmatizedVectorizer())]:#[models.RFClassifierFreeVectorizerTweet(models.TweetsLemmatizedVectorizer())]:
+		print classifier
+		for venues in list_of_venues:
+			print "Venue: ", venues
+			for folds in [10]:
+				errors = venue_inference(full_data, classifier, [venues], n_folds= folds)
+				print np.nanmean(errors,0)
