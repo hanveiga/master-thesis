@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import os
 os.environ['MPLCONFIGDIR'] = "/local/.config/matplotlib" #Nasty fix
+import matplotlib as mpl
+mpl.use('Agg')
 from sklearn import cross_validation
 import cPickle as pickle
 import sys
@@ -71,7 +73,7 @@ def get_real_labels(user, venue_types):
 			labels_dict[ven_type] = 0 
 	return labels_dict
 
-def IncrementalLearningTweetsMeasure(user, dict_of_classifiers, initial_num_tweets=1):
+def IncrementalLearningTweetsMeasure_do(user, dict_of_classifiers, initial_num_tweets=1):
 	# Error per venue type
 	random.shuffle(user.twitter)
 	truncated_tweets = [ tweet for tweet in user.twitter[:initial_num_tweets]]
@@ -93,8 +95,18 @@ def IncrementalLearningTweetsMeasure(user, dict_of_classifiers, initial_num_twee
 			increment += 1
 			if increment % 50 == 0:
 			  for key, classifier in dict_of_classifiers.items():
+			  	  print key
+			  	  print classifier
 				  prediction = classifier.predict([truncated_tweets])
+				  print prediction
+				  print real_label[key]
+				  print 'appending %s' %key
+				  print return_confusion(prediction, real_label[key])
+		          print confusion_dict[key]
 		          confusion_dict[key].append(return_confusion(prediction, real_label[key]))
+		          print 'appended %s' %key
+			  
+			  # reset increment
 			  increment = 0
 			else:
 			  pass
@@ -110,21 +122,89 @@ def IncrementalLearningTweetsMeasure(user, dict_of_classifiers, initial_num_twee
 
 	return confusion_dict
 
+def IncrementalLearningTweetsMeasure(user, dict_of_classifiers, initial_num_tweets=1):
+	# Error per venue type
+	random.shuffle(user.twitter)
+
+	truncated_tweets = [ tweet for tweet in user.twitter[:initial_num_tweets]]
+
+	venue_types = dict_of_classifiers.keys()
+
+	real_label = get_real_labels(user,venue_types)
+
+	#try:
+	user_error = []
+	incremental_error = []
+	
+	error_dict = defaultdict(list)
+
+	for key, classifier in dict_of_classifiers.items():
+			prediction = classifier.predict([truncated_tweets])
+			#error_dict[key].append(int(np.abs(prediction - real_label[key])))
+			error_dict[key].append(return_confusion(prediction,real_label[key]))
+
+	# Incremental prediction
+	increment = 0
+	for tweet in user.twitter[initial_num_tweets:]:
+			truncated_tweets.append(tweet)
+			increment += 1
+			if increment % 200 == 0:
+			  for key, classifier in dict_of_classifiers.items():
+				  prediction = classifier.predict([truncated_tweets])
+				  print key
+				  #print len(prediction)
+				  #user_error.append(np.abs(prediction - real_label[key]))
+				  #error_dict[key].append(int(np.abs(prediction - real_label[key])))
+				  error_dict[key].append(return_confusion(prediction,real_label[key]))
+				  print error_dict[key]
+			  increment = 0
+			else:
+			  pass
+	#rint 'computed the incremental vector'
+
+	# add remaining tweets
+	last_tweet = len(truncated_tweets)
+	for tweet in user.twitter[last_tweet:]:
+		truncated_tweets.append(tweet)
+
+	for key, classifier in dict_of_classifiers.items():
+		#print len(truncated_tweets)
+		prediction = classifier.predict([truncated_tweets])
+		#print len(prediction)
+		#user_error.append(np.abs(prediction - real_label[key]))
+		#error_dict[key].append(int(np.abs(prediction - real_label[key])))
+		error_dict[key].append(return_confusion(prediction,real_label[key]))
+
+	#except:
+	#	print 'Did not compute the rest of the vectors'
+
+
+	#summed_up=[0]*len(error_dict[venue_types[0]])
+	#for venue in venue_types:
+	#	summed_up = [x + y for x, y in zip(summed_up,error_dict[venue])]
+
+	#plt.title(venue)
+	#plt.plot(error_dict[venue])
+	#plt.show()
+
+	return error_dict
+
+
 def return_confusion(prediction,real_label):
-	if (prediction == real_label) and prediction == 1:
+	if ((prediction == real_label) and prediction == 1):
 		## true positive
 		return 1
-	elif (prediction == real_label) and prediction == 0:
+	elif ((prediction == real_label) and prediction == 0):
 		## true negative
 		return 2
-	elif (prediction != real_label) and prediction == 1:
+	elif ((prediction != real_label) and prediction == 1):
 		## false positive
 		return 3
-	elif (prediction != real_label) and prediction == 0:
+	elif ((prediction != real_label) and prediction == 0):
 		## false negative
 		return 4
 	else:
-		return 'null'
+		return 100
 
 def get_error_incremental_learning(train, test, classifier_type, list_of_venues):
 	# pass a matrix back, users x incrementals
@@ -174,7 +254,7 @@ def plot_errors(list_dictionaries, venues):
 		plt.title(venue)
 		print error_matrix.shape
 		plt.plot(np.mean(error_matrix,0))
-		plt.show()
+		#plt.show()
 		plt.savefig(venue+'.png')
 		plt.clf()
 
@@ -184,7 +264,9 @@ def plot_confusion(list_dictionaries):
 	num_users = len(list_dictionaries)
 	venues = list_dictionaries[0].keys()
 
-	print list_dictionaries[0]['Church']
+	print list_dictionaries[0]['Theater']
+	print list_dictionaries[0]['Gym']
+	print list_dictionaries[0]['Wine Bar']
 
 	count = 0
 	for venue in venues:
@@ -218,13 +300,37 @@ def plot_confusion(list_dictionaries):
 		true_neg_curve = []
 		for k in range(error_matrix.shape[1]): # number of iterations
 			iteration = error_matrix[:,k]
-			recall = len([a for a in iteration if a == 1])/float(len([a for a in iteration if a == 1 or a == 4]))
-			precision = len([a for a in iteration if a == 1])/float(len([a for a in iteration if a == 1 or a == 3]))
-			true_neg = len([a for a in iteration if a == 2])/float(len([a for a in iteration if a == 2 or a == 3]))
+			try:
+				recall = len([a for a in iteration if a == 1])/float(len([a for a in iteration if a == 1 or a == 4]))
+			except:
+				recall = 0
+			try:
+				precision = len([a for a in iteration if a == 1])/float(len([a for a in iteration if a == 1 or a == 3]))
+			except:
+				precision = 0
+			try:	
+				true_neg = len([a for a in iteration if a == 2])/float(len([a for a in iteration if a == 2 or a == 3]))
+			except:
+				true_neg = 0
 			recall_curve.append(recall)
 			precision_curve.append(precision)
-			f1_curve.append(2*precision*recall/float(precision+recall))
+			try:
+				f1_curve.append(2*precision*recall/float(precision+recall))
+			except:
+				f1_curve.append(0)
 			accuracy = len([a for a in iteration if a == 1 or a == 2])/float(len([a for a in iteration]))
+			#print len([a for a in iteration])
+			#print accuracy
+			#print len([a for a in iteration if a == 1] + [a for a in iteration if a == 2])
+			#correct = 0
+			#total = 0
+			#for elem in iteration:
+			#	if elem == 1 or elem == 2:
+			#		correct += 1
+			#	total += 1
+
+			#print correct/float(total)
+
 			accuracy_curve.append(accuracy)
 			true_neg_curve.append(true_neg)
 
@@ -235,12 +341,12 @@ def plot_confusion(list_dictionaries):
 		plt.plot(recall_curve, label="Recall", marker='.')
 		plt.plot(precision_curve, label="Precision", marker='.')
 		plt.plot(f1_curve, label="F1-Score", marker='.')
-		plt.plot(true_neg_curve, label="F1-Score", marker='.')
-		plt.legend()
+		plt.plot(true_neg_curve, label="True neg rate", marker='.')
+		plt.legend(loc=0)
 		plt.savefig('fig_' +str(count) +'_accuracy'+'.png')
 		plt.clf()
 
-		plt.title(venue+' Recall')
+		"""plt.title(venue+' Recall')
 		plt.plot(recall_curve)
 		plt.savefig('fig_' +str(count) +'_recall'+'.png')
 		plt.clf()
@@ -254,13 +360,15 @@ def plot_confusion(list_dictionaries):
 		plt.plot(f1_curve)
 		plt.savefig('fig_' +str(count) +'_f1score'+'.png')
 		plt.clf()
-
+		"""
+		
 		count = count + 1
 
 
 
 
 if __name__ =='__main__':
+	
 	full_data = pickle.load(open(sys.argv[1],'rb'))
 
 	full_data_2 = []
@@ -270,7 +378,7 @@ if __name__ =='__main__':
 		else:
 			pass
 	print len(full_data_2)
-
+	
 	#venue_counts = get_top_venues(full_data_2)
 
 	# generate the venue classifier solely based on the frequency of visits
@@ -280,19 +388,18 @@ if __name__ =='__main__':
 	#	list_of_venues.append(key)
 
 	#list_of_venues = ['Gym' , 'Church'] # ,'Wine Bar', 'Gym / Fitness Center', 'Concert Hall', 'Theater', 'Resort', 'Museum', 'Performing Arts Venue', 'College & University', 'Vegetarian / Vegan Restaurant']
-	list_of_venues = ['Gym' , 'Wine Bar', 'Theater'] # 'Resort', 'Museum', 'Performing Arts Venue', 'College & University', 'Vegetarian / Vegan Restaurant']
-
-
+	#list_of_venues = ['Gym' , 'Wine Bar', 'Theater'] # 'Resort', 'Museum', 'Performing Arts Venue', 'College & University', 'Vegetarian / Vegan Restaurant']
+	#list_of_venues = ['Gym' , 'Wine Bar', 'Church']#, 'Theater', 'Resort', 'Museum', 'Performing Arts Venue', 'College & University', 'Vegetarian / Vegan Restaurant']
+	list_of_venues = ['Gym' , 'Wine Bar']
 	errors = get_errors(full_data_2, ProgressiveEnsembleTweetClassifier, list_of_venues, folds=10)
-	pickle.dump(errors,open('debugging.pkl','wb'))
+	pickle.dump(errors,open('error_matrix_informationgain.pkl','wb'))
 	
-	"""
+	
 	#errors = get_errors(full_data_2, ProgressiveEnsembleTweetClassifier, list_of_venues, folds=10)
-	list_of_venues = ['Gym' , 'Church'] # ,'Wine Bar', 'Gym / Fitness Center', 'Concert Hall', 'Theater', 'Resort', 'Museum', 'Performing Arts Venue', 'College & University', 'Vegetarian / Vegan Restaurant']
+	#list_of_venues = ['Gym' , 'Church'] # ,'Wine Bar', 'Gym / Fitness Center', 'Concert Hall', 'Theater', 'Resort', 'Museum', 'Performing Arts Venue', 'College & University', 'Vegetarian / Vegan Restaurant']
 
-
-	errors = pickle.load(open('error_matrix_tfidf_confusion_27march.pkl','rb'))
+	#errors = pickle.load(open('debugging.pkl','rb'))
 
 	for venue in list_of_venues:
 		plot_confusion(errors)
-	"""
+	
