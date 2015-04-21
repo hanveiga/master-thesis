@@ -7,7 +7,7 @@ from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from nltk.stem import WordNetLemmatizer
 import cPickle as pickle
 from models import remove_tweet_noise, ProgressiveEnsembleTweetClassifier
-from information_measure import cosine_similarity
+from information_measure import cosine_similarity, similarity
 ''' Wrapper aroung sklearn to vectorize Annotation objects
 '''
 
@@ -21,15 +21,15 @@ class LemmatizedStandAloneVectorizer(object):
 
     lemmatized = []
     for caption in list_of_captions:
-      print caption.text
+      #print caption.text
       lemma = [self.wordnet.lemmatize(word) for word in caption.text.split()]
-      print 'lemmatized: %s' %(lemma)
+      #print 'lemmatized: %s' %(lemma)
       lemmatized.append(' '.join(lemma))
 
-    print 'all together: %s' %lemmatized
+    #print 'all together: %s' %lemmatized
 
     long_string = ' '.join(lemmatized)
-    print 'long string %s' %long_string
+    #print 'long string %s' %long_string
 
     return self.vectorizer.vectorizer.transform([long_string])
 
@@ -39,6 +39,11 @@ class ClassifierStandAlone(object):
 
   def predict(self, vector):
     return self.classifier.classifier.predict(vector)
+
+def novelty(vectora, vectorb):
+  """ novelty of b wrt to a"""
+  diff = vectorb-vectora
+  print diff 
 
 if __name__ == '__main__':
   dataset = pickle.load(open('dataset_prunned.pkl','rb'))
@@ -58,12 +63,25 @@ if __name__ == '__main__':
   for tweet in user_to_test.twitter[0:10]:
     print tweet.text
   
-  test_vector = vectorizer.transform(user_to_test.twitter[0:10])
+  test_vector = vectorizer.transform([user_to_test.twitter[0]])
+  print 'test vector 1'
   print test_vector
 
-  test_vector2 = vectorizer.transform(user_to_test.twitter[90:100])
-  print test_vector
+  test_vector2 = vectorizer.transform(user_to_test.twitter[1:5])
+  print 'test vector 2'
+  print test_vector2
 
-  print cosine_similarity(test_vector,test_vector2)
+  test_vector3 = vectorizer.transform(user_to_test.twitter[0:5])
+
+  print 1-cosine_similarity(test_vector,test_vector2)
+  print 1-cosine_similarity(test_vector3,test_vector2)
+  print 1-cosine_similarity(test_vector,test_vector3)
+  print similarity(test_vector, test_vector2)
+  print similarity(test_vector,test_vector)
+  print similarity(test_vector2,test_vector3)
+  print similarity(test_vector3,test_vector)
+  novelty(test_vector,test_vector)
+  novelty(test_vector2,test_vector)
+  novelty(test_vector2,test_vector3)
   #classifier_standalone = ClassifierStandAlone(classifier)
   #print classifier_standalone.predict(test_vector.toarray())
