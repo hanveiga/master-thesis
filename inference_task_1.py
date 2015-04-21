@@ -77,10 +77,12 @@ def measure_venue_error(train, test, trainlabels, testlabels, classifier):
 	""" Measure recall and precision, true negative rate, accuracy """
 	classifier.train(train, trainlabels)
 
+	relevant_features = []
 	feature_names = classifier.vectorizer.vectorizer.get_feature_names()
 	for feature_name, feature_imp in zip(feature_names,classifier.classifier.feature_importances_):
-		if feature_imp > 0.01:
-			print '%s, %s' %(feature_name , feature_imp)
+		if feature_imp > 0.00:
+	#		print '%s, %s' %(feature_name , feature_imp)
+			relevant_features.append([feature_name,feature_imp])
 
 	predictions = classifier.predict(test)
 	
@@ -114,34 +116,37 @@ def measure_venue_error(train, test, trainlabels, testlabels, classifier):
 	truenegrate = true_negatives/float(true_negatives+false_positives)
 	accuracy = (true_positives + true_negatives) / float(true_positives+true_negatives+false_positives+false_negatives)
 	
-	return [error, recall, precision, truenegrate, accuracy]
+	return [error, recall, precision, truenegrate, accuracy] , relevant_features
 
 def venue_inference(dataset, classifier, venue_type, n_folds=10):
 	ylabels = get_venue_labels(dataset, venue_type)
 	print len([i for i in ylabels if i == 1])/float(len(ylabels))
-	#folds = cross_validation.KFold(len(dataset), n_folds=n_folds)
-	folds = oversampler(ylabels, threshold=0.40, n_folds = n_folds )
+	folds = cross_validation.KFold(len(dataset), n_folds=n_folds)
+	#folds = oversampler(ylabels, threshold=0.45, n_folds = n_folds )
 
 	rmse = 0
 
 	errors = []
+	relevant_words = []
 	count = 0
 	for train, test in folds:
 		trainset = [dataset[i] for i in train]
 		testset = [dataset[i] for i in test]
 		trainlabels = [ylabels[i] for i in train]
 		testlabels = [ylabels[i] for i in test]
-		errors.append(measure_venue_error(trainset, testset, trainlabels, testlabels, classifier))
+		error, words = measure_venue_error(trainset, testset, trainlabels, testlabels, classifier) 
+		errors.append(error)
+		relevant_words.append(words)
 		count = count + 1
-		if count > 3:
-			break
+		#if count > 3:
+		#	break
 
 #	show_most_informative_features(classifier.vectorizer.vectorizer, classifier.classifier, n=20)
 #	show_parameters(classifier.classifier)
 	#this shit makes no sense o_o
 
 
-	return errors
+	return errors, relevant_words
 
 def show_most_informative_features(vectorizer, clf, n=20):
     feature_names = vectorizer.get_feature_names()
@@ -160,9 +165,10 @@ if __name__ =='__main__':
 	top_venues = get_top_venues(full_data)
 
 	list_of_venues = []
-	for venue, value in top_venues.most_common()[60:80]:
+	for venue, value in top_venues.most_common()[50:90]:
 		list_of_venues.append(venue)
 
+	print list_of_venues
 	#for folds in [10,20,40,100]:
 	#		errors[str(folds)] = first_inference(full_data,models.NaiveRegression(),folds)
 	#print errors
@@ -175,13 +181,25 @@ if __name__ =='__main__':
 			pass
 	print len(full_data_2)
 
-	list_of_venues = ['Church' ,'Wine Bar', 'Gym', 'Gym / Fitness Center', 'Concert Hall', 'Theater', 'Resort', 'Museum', 'Performing Arts Venue', 'College & University', 'Vegetarian / Vegan Restaurant']
+	#list_of_venues = ['Church' ,'Wine Bar', 'Gym', 'Gym / Fitness Center', 'Concert Hall', 'Theater', 'Resort', 'Museum', 'Performing Arts Venue', 'College & University', 'Vegetarian / Vegan Restaurant']
+
 
 #	for venues in [['Gym / Fitness Center'],['Vegetarian / Vegan Restaurant', 'Vegetarian'], ['High School'], ['Night Club'], ['University'], ['Art Museum'], ['Rock Club']]:
+	dict_accuracies = {}
+	dict_relevant_words = {}
+	countit = 0
 	for classifier in [models.EnsembleClassifierFreeVectorizerTweet(models.TweetsLemmatizedVectorizer()), models.EnsembleClassifierFreeVectorizerTweet(models.TweetsInstagramLemmatizedVectorizer())]:#[models.RFClassifierFreeVectorizerTweet(models.TweetsLemmatizedVectorizer())]:
 		print classifier
 		for venues in list_of_venues:
+			errors_aggregated = []
+			relevant_words = []
 			print "Venue: ", venues
 			for folds in [10]:
-				errors = venue_inference(full_data, classifier, [venues], n_folds= folds)
+				errors, words = venue_inference(full_data, classifier, [venues], n_folds= folds)
 				print np.nanmean(errors,0)
+				errors_aggregated.append(errors)
+				relevant_words.append(words)
+			dict_accuracies[venues] = errors_aggregated
+			dict_relevant_words[venues] = relevant_words
+		pickle.dump([dict_accuracies, dict_relevant_words], open('13april_inference_all_oversampling_0'+ str(countit) +'.pkl', 'wb'))
+		countit = countit + 1
