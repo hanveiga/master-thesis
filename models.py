@@ -112,7 +112,7 @@ class TweetsTruncatedVectorizer(object):
 
 class TweetsLemmatizedVectorizer(TweetsTruncatedVectorizer):
   def __init__(self):
-    self.vectorizer = TfidfVectorizer(stop_words='english',min_df=5)
+    self.vectorizer = TfidfVectorizer(stop_words='english',min_df=5, sublinear_tf=True)
     self.wordnet = WordNetLemmatizer()
 
   def fit_transform(self, users):
@@ -148,7 +148,7 @@ class TweetsLemmatizedVectorizer(TweetsTruncatedVectorizer):
 
 class TweetsInstagramLemmatizedVectorizer(TweetsTruncatedVectorizer):
   def __init__(self):
-    self.vectorizer = TfidfVectorizer(stop_words='english',min_df=5)
+    self.vectorizer = TfidfVectorizer(stop_words='english',min_df=5, sublinear_tf=True)
     self.wordnet = WordNetLemmatizer()
 
   def fit_transform(self, users):
