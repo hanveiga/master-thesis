@@ -4,9 +4,6 @@ import numpy as np
 import cPickle as pickle
 import sys
 import os
-#os.environ['MPLCONFIGDIR'] = "/local/.config/matplotlib" #Nasty fix
-#import matplotlib as mpl
-#mpl.use('Agg')
 import matplotlib.pyplot as plt
 
 from models_deconstructed import *
@@ -31,8 +28,6 @@ def ActiveLearningUser(user, dict_of_classifiers, initial_num_tweets=1):
 	random_indices = range(total_tweets)
 	remaining_indices = range(total_tweets)
 	random.shuffle(random_indices)
-	#print ordered_indices
-	#print random_indices
 
 	user_error = []
 	
@@ -57,7 +52,10 @@ def ActiveLearningUser(user, dict_of_classifiers, initial_num_tweets=1):
 		vectorized_tweets[key] = [list_of_vectorizers[key].transform([tweet]) for tweet in user.twitter]
 		relevancy_dict[key] = [get_relevancy(list_of_classifiers_standalone[key], tweet) for tweet in vectorized_tweets[key]]
 
-	print relevancy_dict
+	#print relevancy_dict
+	remaining_tweets_vectorization = {}
+	for key, vectorized in vectorized_tweets.items():
+		remaining_tweets_vectorization[key] = zip(ordered_indices, vectorized)
 
 	truncated_tweets = [ tweet for ind, tweet in zip(ordered_indices,user.twitter) if 
 						 ind in random_indices[:initial_num_tweets]]
@@ -68,6 +66,9 @@ def ActiveLearningUser(user, dict_of_classifiers, initial_num_tweets=1):
 		remaining_indices.remove(ind)
 		added_indices.append(ind)
 
+	for key, _ in remaining_tweets_vectorization.items():
+		remaining_tweets_vectorization[key] = list(filter(lambda x: x[0] not in random_indices[:initial_num_tweets], remaining_tweets_vectorization[key] ))
+
 	# first pass
 	for key, classifier in dict_of_classifiers.items():
 			vectorization[key] = list_of_vectorizers[key].transform(truncated_tweets)
@@ -77,15 +78,18 @@ def ActiveLearningUser(user, dict_of_classifiers, initial_num_tweets=1):
 			accuracy_improv[key].append([0,0])
 
 	# given what has been seen before, rank guys according to novelty + relevancy
+
 	skip = 1
+	iterations = 0
 	while len(remaining_indices) > 1:
-			iterations = 0
 			for key, classifier in dict_of_classifiers.items():
-				remaining_tweets_vectorization = [tweet for ind, tweet in zip(ordered_indices, vectorized_tweets[key]) if ind in remaining_indices]
+				#remaining_tweets_vectorization = [tweet for ind, tweet in zip(ordered_indices, vectorized_tweets[key]) if ind in remaining_indices]
+				remaining_tweets_vectorization[key] = list(filter(lambda x: x[0] in remaining_indices, remaining_tweets_vectorization[key] ))
 				added_tweets_vectorization = list_of_vectorizers[key].transform(truncated_tweets) 
 				novelty_vector = []
-				for remaining_tweet_v in remaining_tweets_vectorization:
-					novelty = im.similarity(remaining_tweet_v, added_tweets_vectorization)
+				for remaining_tweet_v in remaining_tweets_vectorization[key]:
+					#print remaining_tweet_v[1]
+					novelty = im.similarity(remaining_tweet_v[1], added_tweets_vectorization)
 					novelty_vector.append(novelty)
 				#print relevancy_dict[key]
 				relevancy_vector = [ relevancy for ind, relevancy in zip(ordered_indices,relevancy_dict[key]) if ind in remaining_indices]
@@ -98,9 +102,9 @@ def ActiveLearningUser(user, dict_of_classifiers, initial_num_tweets=1):
 					information_vector.append(alpha * nov + (1-alpha)* rel)
 				ordered_information = zip(remaining_indices,information_vector)
 				ordered_information.sort(key = lambda x:x[1], reverse=True)
-				print ordered_information[0:100]
-				print ordered_information[0]
-				print user.twitter[ordered_information[0][0]].text
+				#print ordered_information[0:100]
+				#print ordered_information[0]
+				#print user.twitter[ordered_information[0][0]].text
 
 				#new_tweet_to_add = []
 				for to_add in range(skip):
@@ -108,16 +112,23 @@ def ActiveLearningUser(user, dict_of_classifiers, initial_num_tweets=1):
 					truncated_tweets.append(user.twitter[ordered_information[to_add][0]])
 					remaining_indices.remove(ordered_information[to_add][0])
 					added_indices.append(ordered_information[to_add][0])
-
+				#print len(remaining_indices)
 				#truncated_tweets.append(new_tweet_to_add)
 
 				vectorization = list_of_vectorizers[key].transform(truncated_tweets)
 
 				prediction = list_of_classifiers_standalone[key].predict(vectorization.toarray())
 				error_dict[key].append(return_confusion(prediction,real_label[key]))
-				iterations += 1
-				if iterations == 100:
-					skip = 100
+				iterations += skip
+				#print iterations
+				#print skip
+				if iterations == 50:
+					skip = 200
+				elif iterations >= len(ordered_indices) - 200:
+					print iterations
+					print len(ordered_indices)
+					print len(remaining_indices)
+					return error_dict
 
 	print error_dict
 
@@ -233,8 +244,8 @@ def get_error_incremental_learning(train, test, classifier_type, list_of_venues)
 	iterations = 1
 	information_gain = []
 	accuracy_gain = []
-	for iteration in range(iterations):
-		for user in test:
+	for user in test:
+		for iteration in range(iterations):
 			error = ActiveLearningUser(user,list_of_classifiers)
 			#print infgain
 			errors.append(error)
@@ -324,7 +335,6 @@ def plot_confusion(list_dictionaries):
 		plt.plot(f1_curve, label="F1-Score", marker='.')
 		plt.plot(true_neg_curve, label="True neg rate", marker='.')
 		plt.legend(loc=0)
-		plt.show()
 		plt.savefig('1april_similarity_' +str(count) +'_accuracy'+'.png')
 		plt.clf()
 		
