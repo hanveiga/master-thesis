@@ -1,7 +1,13 @@
+# -*- coding: utf-8 -*-
 import random
 import numpy as np
 import cPickle as pickle
 import sys
+import os
+#os.environ['MPLCONFIGDIR'] = "/local/.config/matplotlib" #Nasty fix
+#import matplotlib as mpl
+#mpl.use('Agg')
+import matplotlib.pyplot as plt
 
 from models_deconstructed import *
 from models import get_visited_venue_labels, ProgressiveClassifier, ProgressiveEnsembleTweetClassifier
@@ -71,7 +77,9 @@ def ActiveLearningUser(user, dict_of_classifiers, initial_num_tweets=1):
 			accuracy_improv[key].append([0,0])
 
 	# given what has been seen before, rank guys according to novelty + relevancy
-	while len(remaining_indices) > len(ordered_indices) - 100: 
+	skip = 1
+	while len(remaining_indices) > 1:
+			iterations = 0
 			for key, classifier in dict_of_classifiers.items():
 				remaining_tweets_vectorization = [tweet for ind, tweet in zip(ordered_indices, vectorized_tweets[key]) if ind in remaining_indices]
 				added_tweets_vectorization = list_of_vectorizers[key].transform(truncated_tweets) 
@@ -79,28 +87,37 @@ def ActiveLearningUser(user, dict_of_classifiers, initial_num_tweets=1):
 				for remaining_tweet_v in remaining_tweets_vectorization:
 					novelty = im.similarity(remaining_tweet_v, added_tweets_vectorization)
 					novelty_vector.append(novelty)
-				relevancy_vector = [ relevancy for ind, relevancy in enumerate(relevancy_dict[key]) for ind in remaining_indices]
+				#print relevancy_dict[key]
+				relevancy_vector = [ relevancy for ind, relevancy in zip(ordered_indices,relevancy_dict[key]) if ind in remaining_indices]
 				#print relevancy_vector
 				#print novelty_vector
-				alpha = 0.3
+				alpha = 0.5
 				information_vector = []
 				for nov, rel in zip( novelty_vector, relevancy_vector ):
 				#	print alpha * nov + (1-alpha)* rel
 					information_vector.append(alpha * nov + (1-alpha)* rel)
 				ordered_information = zip(remaining_indices,information_vector)
-				ordered_information.sort(key = lambda x:x[1], reverse = True)
-				#print ordered_information
-				print ordered_information[1][0]
-				print user.twitter[ordered_information[1][0]].text
-				new_tweet_to_add = user.twitter[ordered_information[1][0]]
-				truncated_tweets.append(new_tweet_to_add)
-				remaining_indices.remove(ordered_information[1][0])
-				added_indices.append(ordered_information[1][0])
+				ordered_information.sort(key = lambda x:x[1], reverse=True)
+				print ordered_information[0:100]
+				print ordered_information[0]
+				print user.twitter[ordered_information[0][0]].text
+
+				#new_tweet_to_add = []
+				for to_add in range(skip):
+#					new_tweet_to_add.append(user.twitter[ordered_information[to_add][0]])
+					truncated_tweets.append(user.twitter[ordered_information[to_add][0]])
+					remaining_indices.remove(ordered_information[to_add][0])
+					added_indices.append(ordered_information[to_add][0])
+
+				#truncated_tweets.append(new_tweet_to_add)
 
 				vectorization = list_of_vectorizers[key].transform(truncated_tweets)
 
 				prediction = list_of_classifiers_standalone[key].predict(vectorization.toarray())
 				error_dict[key].append(return_confusion(prediction,real_label[key]))
+				iterations += 1
+				if iterations == 100:
+					skip = 100
 
 	print error_dict
 
@@ -213,7 +230,7 @@ def get_error_incremental_learning(train, test, classifier_type, list_of_venues)
 	# pass a matrix back, users x incrementals
 	list_of_classifiers = train_classifiers(train, classifier_type, list_of_venues)
 	errors = []
-	iterations = 2
+	iterations = 1
 	information_gain = []
 	accuracy_gain = []
 	for iteration in range(iterations):
@@ -246,6 +263,73 @@ def get_errors(dataset, classifier_type, list_of_venues, folds=10):
 			break
 	return errors#, infos, accs
 
+
+def plot_confusion(list_dictionaries):
+	num_users = len(list_dictionaries)
+	venues = list_dictionaries[0].keys()
+
+	count = 0
+	for venue in venues:
+		max_len = 0
+		error_per_venue = []
+		for dictionary in list_dictionaries:
+			error_per_venue.append(dictionary[venue])
+			if len(dictionary[venue]) > max_len:
+				max_len = len(dictionary[venue])
+		error_matrix = np.zeros((num_users,max_len))
+		error_matrix[:] = np.nan
+		for i in range(num_users):
+			for j in range(len(error_per_venue[i])):
+				error_matrix[i,j] = error_per_venue[i][j]
+			if len(error_per_venue[i]) < error_matrix.shape[1]:
+				for k in xrange(len(error_per_venue[i]),max_len):
+					error_matrix[i,k] = error_per_venue[i][-1]
+
+		recall_curve = []
+		precision_curve = []
+		f1_curve = []
+		accuracy_curve = []
+		true_neg_curve = []
+		for k in range(error_matrix.shape[1]): # number of iterations
+			iteration = error_matrix[:,k]
+			try:
+				recall = len([a for a in iteration if a == 1])/float(len([a for a in iteration if a == 1 or a == 4]))
+			except:
+				recall = 0
+			try:
+				precision = len([a for a in iteration if a == 1])/float(len([a for a in iteration if a == 1 or a == 3]))
+			except:
+				precision = 0
+			try:	
+				true_neg = len([a for a in iteration if a == 2])/float(len([a for a in iteration if a == 2 or a == 3]))
+			except:
+				true_neg = 0
+			recall_curve.append(recall)
+			precision_curve.append(precision)
+			try:
+				f1_curve.append(2*precision*recall/float(precision+recall))
+			except:
+				f1_curve.append(0)
+			accuracy = len([a for a in iteration if a == 1 or a == 2])/float(len([a for a in iteration]))
+
+			accuracy_curve.append(accuracy)
+			true_neg_curve.append(true_neg)
+
+		range_x = len(accuracy_curve)
+
+		plt.title(venue+' Accuracy')
+		plt.plot(accuracy_curve, label="Accuracy", marker='.')
+		plt.plot(recall_curve, label="Recall", marker='.')
+		plt.plot(precision_curve, label="Precision", marker='.')
+		plt.plot(f1_curve, label="F1-Score", marker='.')
+		plt.plot(true_neg_curve, label="True neg rate", marker='.')
+		plt.legend(loc=0)
+		plt.show()
+		plt.savefig('1april_similarity_' +str(count) +'_accuracy'+'.png')
+		plt.clf()
+		
+		count = count + 1
+
 if __name__ =='__main__':
 	
 	full_data = pickle.load(open(sys.argv[1],'rb'))
@@ -263,3 +347,6 @@ if __name__ =='__main__':
 	pickle.dump(errors,open('16april_error_matrix_debug2_gym.pkl','wb'))
 	#pickle.dump(infos,open('16april_informationgain_debug2_gym.pkl','wb'))
 	#pickle.dump(accs,open('16april_accgain_debug2_gym.pkl','wb'))
+	#errors = pickle.load(open('16april_error_matrix_debug2_gym.pkl','rb'))
+	#print errors
+	plot_confusion(errors)
