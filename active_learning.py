@@ -95,7 +95,7 @@ def ActiveLearningUser(user, dict_of_classifiers, initial_num_tweets=1):
 				relevancy_vector = [ relevancy for ind, relevancy in zip(ordered_indices,relevancy_dict[key]) if ind in remaining_indices]
 				#print relevancy_vector
 				#print novelty_vector
-				alpha = 0.5
+				alpha = 0.7
 				information_vector = []
 				for nov, rel in zip( novelty_vector, relevancy_vector ):
 				#	print alpha * nov + (1-alpha)* rel
@@ -123,12 +123,13 @@ def ActiveLearningUser(user, dict_of_classifiers, initial_num_tweets=1):
 				#print iterations
 				#print skip
 				if iterations == 50:
-					skip = 200
-				elif iterations >= len(ordered_indices) - 200:
+					skip = 500
+				elif iterations >= len(ordered_indices) - 500:
 					print iterations
 					print len(ordered_indices)
 					print len(remaining_indices)
-					return error_dict
+					#return error_dict
+					skip = len(ordered_indices) - iterations - 1
 
 	print error_dict
 
@@ -335,6 +336,11 @@ def plot_confusion(list_dictionaries):
 		plt.plot(f1_curve, label="F1-Score", marker='.')
 		plt.plot(true_neg_curve, label="True neg rate", marker='.')
 		plt.legend(loc=0)
+
+		fig1 = plt.gcf()
+		fig1.set_size_inches(18.5,10.5)
+
+		plt.show()
 		plt.savefig('1april_similarity_' +str(count) +'_accuracy'+'.png')
 		plt.clf()
 		
@@ -351,12 +357,12 @@ if __name__ =='__main__':
 		else:
 			pass
 	print len(full_data_2)
-
+	
 	list_of_venues = ['Church']#, 'Furniture / Home Store', 'Japanese Restaurant', 'Resort', 'Taco Place']
 	errors = get_errors(full_data_2, ProgressiveEnsembleTweetClassifier, list_of_venues, folds=10)
-	pickle.dump(errors,open('16april_error_matrix_debug2_gym.pkl','wb'))
+	pickle.dump(errors,open('23_april_delta07.pkl','wb'))
 	#pickle.dump(infos,open('16april_informationgain_debug2_gym.pkl','wb'))
 	#pickle.dump(accs,open('16april_accgain_debug2_gym.pkl','wb'))
-	#errors = pickle.load(open('16april_error_matrix_debug2_gym.pkl','rb'))
+	#errors = pickle.load(open('23_april_delta04.pkl','rb'))
 	#print errors
 	plot_confusion(errors)
