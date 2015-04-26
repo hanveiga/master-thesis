@@ -3,6 +3,8 @@ import random
 import numpy as np
 import cPickle as pickle
 import sys
+import matplotlib as mpl
+mpl.use('Agg')
 import os
 import matplotlib.pyplot as plt
 
@@ -17,7 +19,7 @@ import models
 from data import *
 from find_venue_heuristics import get_top_venues, get_venue_type_visited
 
-def ActiveLearningUser(user, dict_of_classifiers, initial_num_tweets=1):
+def ActiveLearningUser(user, dict_of_classifiers, initial_num_tweets=1, alpha = 1):
 	#random.shuffle(user.twitter)
 	venue_types = dict_of_classifiers.keys()
 	real_label = get_real_labels(user,venue_types)
@@ -95,7 +97,6 @@ def ActiveLearningUser(user, dict_of_classifiers, initial_num_tweets=1):
 				relevancy_vector = [ relevancy for ind, relevancy in zip(ordered_indices,relevancy_dict[key]) if ind in remaining_indices]
 				#print relevancy_vector
 				#print novelty_vector
-				alpha = 0.7
 				information_vector = []
 				for nov, rel in zip( novelty_vector, relevancy_vector ):
 				#	print alpha * nov + (1-alpha)* rel
@@ -238,7 +239,7 @@ def return_confusion(prediction,real_label):
 	else:
 		return 100
 
-def get_error_incremental_learning(train, test, classifier_type, list_of_venues):
+def get_error_incremental_learning(train, test, classifier_type, list_of_venues, alpha = 1):
 	# pass a matrix back, users x incrementals
 	list_of_classifiers = train_classifiers(train, classifier_type, list_of_venues)
 	errors = []
@@ -247,14 +248,14 @@ def get_error_incremental_learning(train, test, classifier_type, list_of_venues)
 	accuracy_gain = []
 	for user in test:
 		for iteration in range(iterations):
-			error = ActiveLearningUser(user,list_of_classifiers)
+			error = ActiveLearningUser(user,list_of_classifiers, alpha)
 			#print infgain
 			errors.append(error)
 			#information_gain.append(infgain)
 			#accuracy_gain.append(accgain)
 	return errors#, information_gain, accuracy_gain
 
-def get_errors(dataset, classifier_type, list_of_venues, folds=10):
+def get_errors(dataset, classifier_type, list_of_venues, folds=10, alpha = 1):
 	folds = cross_validation.KFold(len(dataset),n_folds=folds)	
 	errors = []
 	infos = []
@@ -263,7 +264,7 @@ def get_errors(dataset, classifier_type, list_of_venues, folds=10):
 	for train, test in folds:
 		trainset = [dataset[i] for i in train]
 		testset = [dataset[i] for i in test]
-		error_dictionaries = get_error_incremental_learning(trainset, testset, classifier_type, list_of_venues)
+		error_dictionaries = get_error_incremental_learning(trainset, testset, classifier_type, list_of_venues, alpha)
 		for error in error_dictionaries:
 			errors.append(error)
 		#for info in inf_dictionaries:
@@ -340,8 +341,8 @@ def plot_confusion(list_dictionaries):
 		fig1 = plt.gcf()
 		fig1.set_size_inches(18.5,10.5)
 
-		plt.show()
-		plt.savefig('1april_similarity_' +str(count) +'_accuracy'+'.png')
+		#plt.show()
+		plt.savefig('26_april_07delta_' +str(count) +'_accuracy'+'.png')
 		plt.clf()
 		
 		count = count + 1
@@ -359,10 +360,10 @@ if __name__ =='__main__':
 	print len(full_data_2)
 	
 	list_of_venues = ['Church']#, 'Furniture / Home Store', 'Japanese Restaurant', 'Resort', 'Taco Place']
-	errors = get_errors(full_data_2, ProgressiveEnsembleTweetClassifier, list_of_venues, folds=10)
-	pickle.dump(errors,open('23_april_delta07.pkl','wb'))
+	errors = get_errors(full_data_2, ProgressiveEnsembleTweetClassifier, list_of_venues, folds=10, alpha=1)
+	pickle.dump(errors,open('23_april_delta1.pkl','wb'))
 	#pickle.dump(infos,open('16april_informationgain_debug2_gym.pkl','wb'))
 	#pickle.dump(accs,open('16april_accgain_debug2_gym.pkl','wb'))
-	#errors = pickle.load(open('23_april_delta04.pkl','rb'))
+	#errors = pickle.load(open('23_april_delta07.pkl','rb'))
 	#print errors
 	plot_confusion(errors)
