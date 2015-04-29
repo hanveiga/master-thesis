@@ -123,7 +123,9 @@ def ActiveLearningUser(user, dict_of_classifiers, initial_num_tweets=1, alpha = 
 				iterations += skip
 				#print iterations
 				#print skip
-				if iterations == 50:
+				if iterations == 20:
+					print 'end'
+					return error_dict
 					skip = 500
 				elif iterations >= len(ordered_indices) - 500:
 					print iterations
@@ -135,6 +137,117 @@ def ActiveLearningUser(user, dict_of_classifiers, initial_num_tweets=1, alpha = 
 	print error_dict
 
 	return error_dict
+
+def ActiveLearningUserStop(user, dict_of_classifiers, initial_num_tweets=1, alpha = 1):
+	#random.shuffle(user.twitter)
+	venue_types = dict_of_classifiers.keys()
+	real_label = get_real_labels(user,venue_types)
+
+	# Generate sequence of indices
+	total_tweets = len(user.twitter)
+	ordered_indices = range(total_tweets)
+	random_indices = range(total_tweets)
+	remaining_indices = range(total_tweets)
+	random.shuffle(random_indices)
+
+	user_error = []
+	
+	error_dict = defaultdict(list)
+	information_gain = defaultdict(list)
+	accuracy_improv = defaultdict(list)
+
+	vectorization = {}
+	vectorization_new = {}
+	list_of_vectorizers = {}
+	list_of_classifiers_standalone = {}
+
+	# Get standalone vectorizer and classifier
+	for key, classifier in dict_of_classifiers.items():
+		list_of_vectorizers[key] = LemmatizedStandAloneVectorizer(classifier.vectorizer)
+		list_of_classifiers_standalone[key] = ClassifierStandAlone(classifier)
+
+	# get relevancy of all tweets
+	relevancy_dict = {}
+	vectorized_tweets = {}
+	for key, classifier in dict_of_classifiers.items():
+		vectorized_tweets[key] = [list_of_vectorizers[key].transform([tweet]) for tweet in user.twitter]
+		relevancy_dict[key] = [get_relevancy(list_of_classifiers_standalone[key], tweet) for tweet in vectorized_tweets[key]]
+
+	#print relevancy_dict
+	remaining_tweets_vectorization = {}
+	for key, vectorized in vectorized_tweets.items():
+		remaining_tweets_vectorization[key] = zip(ordered_indices, vectorized)
+
+	truncated_tweets = [ tweet for ind, tweet in zip(ordered_indices,user.twitter) if 
+						 ind in random_indices[:initial_num_tweets]]
+
+	added_indices = []
+	for ind in random_indices[:initial_num_tweets]:
+		#user.twitter.pop(ind)
+		remaining_indices.remove(ind)
+		added_indices.append(ind)
+
+	for key, _ in remaining_tweets_vectorization.items():
+		remaining_tweets_vectorization[key] = list(filter(lambda x: x[0] not in random_indices[:initial_num_tweets], remaining_tweets_vectorization[key] ))
+
+	# first pass
+	for key, classifier in dict_of_classifiers.items():
+			vectorization[key] = list_of_vectorizers[key].transform(truncated_tweets)
+			prediction = list_of_classifiers_standalone[key].predict(vectorization[key].toarray())
+			error_dict[key].append(return_confusion(prediction,real_label[key]))
+			information_gain[key].append([0,0])
+			accuracy_improv[key].append([0,0])
+
+	# given what has been seen before, rank guys according to novelty + relevancy
+
+	skip = 1
+	iterations = 0
+	while len(remaining_indices) > 1:
+			for key, classifier in dict_of_classifiers.items():
+				#remaining_tweets_vectorization = [tweet for ind, tweet in zip(ordered_indices, vectorized_tweets[key]) if ind in remaining_indices]
+				remaining_tweets_vectorization[key] = list(filter(lambda x: x[0] in remaining_indices, remaining_tweets_vectorization[key] ))
+				added_tweets_vectorization = list_of_vectorizers[key].transform(truncated_tweets) 
+				novelty_vector = []
+				for remaining_tweet_v in remaining_tweets_vectorization[key]:
+					#print remaining_tweet_v[1]
+					novelty = im.similarity(remaining_tweet_v[1], added_tweets_vectorization)
+					novelty_vector.append(novelty)
+				#print relevancy_dict[key]
+				relevancy_vector = [ relevancy for ind, relevancy in zip(ordered_indices,relevancy_dict[key]) if ind in remaining_indices]
+				#print relevancy_vector
+				#print novelty_vector
+				information_vector = []
+				for nov, rel in zip( novelty_vector, relevancy_vector ):
+				#	print alpha * nov + (1-alpha)* rel
+					information_vector.append(alpha * nov + (1-alpha)* rel)
+				ordered_information = zip(remaining_indices,information_vector)
+				ordered_information.sort(key = lambda x:x[1], reverse=True)
+				#print ordered_information[0:100]
+				#print ordered_information[0]
+				#print user.twitter[ordered_information[0][0]].text
+
+				#new_tweet_to_add = []
+				for to_add in range(skip):
+#					new_tweet_to_add.append(user.twitter[ordered_information[to_add][0]])
+					truncated_tweets.append(user.twitter[ordered_information[to_add][0]])
+					remaining_indices.remove(ordered_information[to_add][0])
+					added_indices.append(ordered_information[to_add][0])
+				#print len(remaining_indices)
+				#truncated_tweets.append(new_tweet_to_add)
+
+				vectorization = list_of_vectorizers[key].transform(truncated_tweets)
+
+				prediction = list_of_classifiers_standalone[key].predict(vectorization.toarray())
+				error_dict[key].append(return_confusion(prediction,real_label[key]))
+				iterations += skip
+				#print iterations
+				#print skip
+				if iterations == 10:
+					print 'end'
+					return error_dict
+
+	return error_dict
+
 
 def get_relevancy_vector(tweets, classifier):
 	relevancy_vector = [get_relevancy(classifier, tweet) for tweet in tweets]
@@ -243,12 +356,12 @@ def get_error_incremental_learning(train, test, classifier_type, list_of_venues,
 	# pass a matrix back, users x incrementals
 	list_of_classifiers = train_classifiers(train, classifier_type, list_of_venues)
 	errors = []
-	iterations = 1
+	iterations = 2
 	information_gain = []
 	accuracy_gain = []
 	for user in test:
 		for iteration in range(iterations):
-			error = ActiveLearningUser(user,list_of_classifiers, alpha)
+			error = ActiveLearningUserStop(user,list_of_classifiers, alpha)
 			#print infgain
 			errors.append(error)
 			#information_gain.append(infgain)
@@ -277,7 +390,7 @@ def get_errors(dataset, classifier_type, list_of_venues, folds=10, alpha = 1):
 	return errors#, infos, accs
 
 
-def plot_confusion(list_dictionaries):
+def plot_confusion(list_dictionaries, filename):
 	num_users = len(list_dictionaries)
 	venues = list_dictionaries[0].keys()
 
@@ -342,10 +455,64 @@ def plot_confusion(list_dictionaries):
 		fig1.set_size_inches(18.5,10.5)
 
 		#plt.show()
-		plt.savefig('26_april_07delta_' +str(count) +'_accuracy'+'.png')
+		plt.savefig(filename +str(count) + '_ranked' +'.png')
 		plt.clf()
 		
 		count = count + 1
+
+def aggregate_errors(dict_errors):
+	num_users = len(list_dictionaries)
+	venues = list_dictionaries[0].keys()
+
+	count = 0
+	for venue in venues:
+		max_len = 0
+		error_per_venue = []
+		for dictionary in list_dictionaries:
+			error_per_venue.append(dictionary[venue])
+			if len(dictionary[venue]) > max_len:
+				max_len = len(dictionary[venue])
+		error_matrix = np.zeros((num_users,max_len))
+		error_matrix[:] = np.nan
+		for i in range(num_users):
+			for j in range(len(error_per_venue[i])):
+				error_matrix[i,j] = error_per_venue[i][j]
+			if len(error_per_venue[i]) < error_matrix.shape[1]:
+				for k in xrange(len(error_per_venue[i]),max_len):
+					error_matrix[i,k] = error_per_venue[i][-1]
+
+		recall_curve = []
+		precision_curve = []
+		f1_curve = []
+		accuracy_curve = []
+		true_neg_curve = []
+		for k in range(error_matrix.shape[1]): # number of iterations
+			iteration = error_matrix[:,k]
+			try:
+				recall = len([a for a in iteration if a == 1])/float(len([a for a in iteration if a == 1 or a == 4]))
+			except:
+				recall = 0
+			try:
+				precision = len([a for a in iteration if a == 1])/float(len([a for a in iteration if a == 1 or a == 3]))
+			except:
+				precision = 0
+			try:	
+				true_neg = len([a for a in iteration if a == 2])/float(len([a for a in iteration if a == 2 or a == 3]))
+			except:
+				true_neg = 0
+			recall_curve.append(recall)
+			precision_curve.append(precision)
+			try:
+				f1_curve.append(2*precision*recall/float(precision+recall))
+			except:
+				f1_curve.append(0)
+			accuracy = len([a for a in iteration if a == 1 or a == 2])/float(len([a for a in iteration]))
+
+			accuracy_curve.append(accuracy)
+			true_neg_curve.append(true_neg)
+
+	print '%s, %s, %s, %s, %s' %(accuracy_curve[0], precision_curve[0], true_neg_curve[0], recall_curve[0], f1_curve[0])
+	print '%s, %s, %s, %s, %s' %(accuracy_curve[-1], precision_curve[-1], true_neg_curve[-1], recall_curve[-1], f1_curve[-1])
 
 if __name__ =='__main__':
 	
@@ -359,11 +526,16 @@ if __name__ =='__main__':
 			pass
 	print len(full_data_2)
 	
+	delta = sys.argv[2]
+
 	list_of_venues = ['Church']#, 'Furniture / Home Store', 'Japanese Restaurant', 'Resort', 'Taco Place']
-	errors = get_errors(full_data_2, ProgressiveEnsembleTweetClassifier, list_of_venues, folds=10, alpha=1)
-	pickle.dump(errors,open('23_april_delta1.pkl','wb'))
+	errors = get_errors(full_data_2, ProgressiveEnsembleTweetClassifier, list_of_venues, folds=10, alpha=float(delta))
+
+	pickle.dump(errors,open('29_april_delta' + str(delta) + '.pkl','wb'))
 	#pickle.dump(infos,open('16april_informationgain_debug2_gym.pkl','wb'))
 	#pickle.dump(accs,open('16april_accgain_debug2_gym.pkl','wb'))
-	#errors = pickle.load(open('23_april_delta07.pkl','rb'))
+	#errors = pickle.load(open('23_april_delta1.pkl','rb'))
 	#print errors
-	plot_confusion(errors)
+	#filename = '27_april_delta1'
+	#plot_confusion(errors, filename)
+	aggregate_errors(errors)
