@@ -53,12 +53,13 @@ def train_classifiers(dataset, classifier, list_of_venues):
 	for venue in list_of_venues:
 		# train classifier
 		ylabels = get_visited_venue_labels(dataset, venue)
-
-		extended_indx = oversampler(ylabels, threshold=0.45)
-		dataset_extended = [dataset[i] for i in extended_indx]
-		y_labels_extended = get_visited_venue_labels(dataset_extended, venue)
+		print len([a for a in ylabels if a == 1])/float(len(ylabels))
+		#extended_indx = oversampler(ylabels, threshold=0.30)
+		#dataset_extended = [dataset[i] for i in extended_indx]
+		#y_labels_extended = get_visited_venue_labels(dataset_extended, venue)
 		classifier_ven = classifier()
-		classifier_ven.train(dataset_extended,y_labels_extended)
+		#classifier_ven.train(dataset_extended,y_labels_extended)
+		classifier_ven.train(dataset, ylabels)
 		dict_of_classifiers[venue] = classifier_ven
 
 	print dict_of_classifiers
@@ -162,15 +163,16 @@ def IncrementalLearningTweetsMeasure(user, dict_of_classifiers, initial_num_twee
 	# Incremental prediction
 	increment = 0
 	tweets_to_add = []
-	skip = 1
+	skip = 20
 	counting_tweets = 0
 	for tweet in user.twitter[initial_num_tweets:]:
 			tweets_to_add.append(tweet)
 			#truncated_tweets.append(tweet)
 			increment += 1
 			counting_tweets += 1
-			if counting_tweets > 100:
-				skip = 100
+			#if counting_tweets == 10:
+			#	return  error_dict, information_gain, accuracy_improv
+			#	skip = 500
 			if increment % skip == 0:
 			  for subtweet in tweets_to_add:
 				  	truncated_tweets.append(subtweet)
@@ -264,7 +266,7 @@ def get_error_incremental_learning(train, test, classifier_type, list_of_venues)
 	# pass a matrix back, users x incrementals
 	list_of_classifiers = train_classifiers(train, classifier_type, list_of_venues)
 	errors = []
-	iterations = 6
+	iterations = 1
 	information_gain = []
 	accuracy_gain = []
 	for iteration in range(iterations):
@@ -293,7 +295,7 @@ def get_errors(dataset, classifier_type, list_of_venues, folds=10):
 		for acc in acc_dictionaries:
 			accs.append(acc)
 		count = count+1
-		if count > 1:
+		if count > 2:
 			break
 	return errors, infos, accs
 
@@ -377,6 +379,10 @@ def plot_confusion(list_dictionaries):
 
 		range_x = len(accuracy_curve)
 
+		fig1 = plt.gcf()
+		fig1.set_size_inches(18.5,10.5)
+
+		print venue
 		plt.title(venue+' Accuracy')
 		plt.plot(accuracy_curve, label="Accuracy", marker='.')
 		plt.plot(recall_curve, label="Recall", marker='.')
@@ -384,6 +390,7 @@ def plot_confusion(list_dictionaries):
 		plt.plot(f1_curve, label="F1-Score", marker='.')
 		plt.plot(true_neg_curve, label="True neg rate", marker='.')
 		plt.legend(loc=0)
+		#plt.show()
 		plt.savefig('1april_similarity_' +str(count) +'_accuracy'+'.png')
 		plt.clf()
 
@@ -518,11 +525,65 @@ def plot_information_gain(list_dictionaries, inf_gain, inc_acc):
 		fig1 = plt.gcf()
 		fig1.set_size_inches(18.5,10.5)
 		#fig1.savefig('test2png.png',dpi=100)
-		fig1.savefig('16april_' +str(count) +'_accuracy_gain_cos'+'.png', dpi=300)
+		fig1.savefig('27april_' +str(count) +'_noactive_1iter'+'.png', dpi=300)
 		#plt.savefig('31march_' +str(count) +'_accuracy_gain'+'.png', dpi=300)
 		count = count + 1
 		
 		plt.clf()
+
+def aggregate_errors(list_dictionaries):
+	num_users = len(list_dictionaries)
+	venues = list_dictionaries[0].keys()
+
+	count = 0
+	for venue in venues:
+		max_len = 0
+		error_per_venue = []
+		for dictionary in list_dictionaries:
+			error_per_venue.append(dictionary[venue])
+			if len(dictionary[venue]) > max_len:
+				max_len = len(dictionary[venue])
+		error_matrix = np.zeros((num_users,max_len))
+		error_matrix[:] = np.nan
+		for i in range(num_users):
+			for j in range(len(error_per_venue[i])):
+				error_matrix[i,j] = error_per_venue[i][j]
+			if len(error_per_venue[i]) < error_matrix.shape[1]:
+				for k in xrange(len(error_per_venue[i]),max_len):
+					error_matrix[i,k] = error_per_venue[i][-1]
+
+		recall_curve = []
+		precision_curve = []
+		f1_curve = []
+		accuracy_curve = []
+		true_neg_curve = []
+		for k in range(error_matrix.shape[1]): # number of iterations
+			iteration = error_matrix[:,k]
+			try:
+				recall = len([a for a in iteration if a == 1])/float(len([a for a in iteration if a == 1 or a == 4]))
+			except:
+				recall = 0
+			try:
+				precision = len([a for a in iteration if a == 1])/float(len([a for a in iteration if a == 1 or a == 3]))
+			except:
+				precision = 0
+			try:	
+				true_neg = len([a for a in iteration if a == 2])/float(len([a for a in iteration if a == 2 or a == 3]))
+			except:
+				true_neg = 0
+			recall_curve.append(recall)
+			precision_curve.append(precision)
+			try:
+				f1_curve.append(2*precision*recall/float(precision+recall))
+			except:
+				f1_curve.append(0)
+			accuracy = len([a for a in iteration if a == 1 or a == 2])/float(len([a for a in iteration]))
+
+			accuracy_curve.append(accuracy)
+			true_neg_curve.append(true_neg)
+
+	print '%s, %s, %s, %s, %s' %(accuracy_curve[0], precision_curve[0], true_neg_curve[0], recall_curve[0], f1_curve[0])
+	print '%s, %s, %s, %s, %s' %(accuracy_curve[-1], precision_curve[-1], true_neg_curve[-1], recall_curve[-1], f1_curve[-1])
 
 
 if __name__ =='__main__':
@@ -537,27 +598,30 @@ if __name__ =='__main__':
 			pass
 	print len(full_data_2)
 	
-	#venue_counts = get_top_venues(full_data_2)
+	venue_counts = get_top_venues(full_data_2)
 
 	# generate the venue classifier solely based on the frequency of visits
-	#severalvenues = venue_counts.most_common()[70:80]
-	#list_of_venues=[]
-	#for key, value in severalvenues:
-	#	list_of_venues.append(key)
+	severalvenues = venue_counts.most_common()[60:70]
+	list_of_venues=[]
+	for key, value in severalvenues:
+		list_of_venues.append(key)
 
 	#list_of_venues = ['Gym' , 'Church'] # ,'Wine Bar', 'Gym / Fitness Center', 'Concert Hall', 'Theater', 'Resort', 'Museum', 'Performing Arts Venue', 'College & University', 'Vegetarian / Vegan Restaurant']
 	#list_of_venues = ['Gym' , 'Wine Bar', 'Theater'] # 'Resort', 'Museum', 'Performing Arts Venue', 'College & University', 'Vegetarian / Vegan Restaurant']
 	#list_of_venues = ['Gym' , 'Wine Bar', 'Church', 'Theater', 'Resort', 'Museum', 'Performing Arts Venue', 'College & University', 'Vegetarian / Vegan Restaurant']
 	#list_of_venues = ['Gym' , 'Wine Bar', 'Theater']
 	#list_of_venues = ['Church', 'Wine Bar']
-	list_of_venues = ['Automotive Shop', 'Beach', 'Brewery']#, 'Furniture / Home Store', 'Japanese Restaurant', 'Resort', 'Taco Place']
+	#list_of_venues = ['Automotive Shop', 'Beach', 'Brewery']#, 'Furniture / Home Store', 'Japanese Restaurant', 'Resort', 'Taco Place']
+	#list_of_venues = ['Church']
 	errors, infos, accs = get_errors(full_data_2, ProgressiveEnsembleTweetClassifier, list_of_venues, folds=10)
-	pickle.dump(errors,open('16april_error_matrix_debug2_gym.pkl','wb'))
-	pickle.dump(infos,open('16april_informationgain_debug2_gym.pkl','wb'))
-	pickle.dump(accs,open('16april_accgain_debug2_gym.pkl','wb'))
+	pickle.dump(errors,open('3may_6070_error_matrix_1iter.pkl','wb'))
+	pickle.dump(infos,open('3may_6070_informationgain_1iter.pkl','wb'))
+	pickle.dump(accs,open('3may_6070_accgain_1iter.pkl','wb'))
 	
-	plot_information_gain(errors, infos, accs)
-	
+	#plot_information_gain(errors, infos, accs)
+	#errors = pickle.load(open('27april_error_matrix.pkl','rb'))
+	#plot_confusion(errors)
+	#aggregate_errors(errors)
 	#errors = get_errors(full_data_2, ProgressiveEnsembleTweetClassifier, list_of_venues, folds=10)
 	#list_of_venues = ['Gym' , 'Church'] # ,'Wine Bar', 'Gym / Fitness Center', 'Concert Hall', 'Theater', 'Resort', 'Museum', 'Performing Arts Venue', 'College & University', 'Vegetarian / Vegan Restaurant']
 
@@ -566,9 +630,9 @@ if __name__ =='__main__':
 	#for venue in list_of_venues:
 	#plot_confusion(errors)
 	
-	#errors = pickle.load(open('error_matrix_march31_highres_fixed.pkl','rb'))
+	errors = pickle.load(open('3may_5060_error_matrix_1iter.pkl','rb'))
 	#nov = pickle.load(open('informationgain_march31_highres_fixed.pkl','rb'))
-
+	plot_confusion(errors)
 
 	"""errors = pickle.load(open('14april_error_matrix_debug2_gym.pkl','rb'))
 	nov = pickle.load(open('14april_informationgain_debug2_gym.pkl','rb'))

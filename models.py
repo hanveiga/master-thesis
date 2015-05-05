@@ -112,7 +112,7 @@ class TweetsTruncatedVectorizer(object):
 
 class TweetsLemmatizedVectorizer(TweetsTruncatedVectorizer):
   def __init__(self):
-    self.vectorizer = TfidfVectorizer(stop_words='english',min_df=5, sublinear_tf=True)
+    self.vectorizer = TfidfVectorizer(stop_words='english',min_df=5) #, sublinear_tf=True)
     self.wordnet = WordNetLemmatizer()
 
   def fit_transform(self, users):
@@ -148,7 +148,7 @@ class TweetsLemmatizedVectorizer(TweetsTruncatedVectorizer):
 
 class TweetsInstagramLemmatizedVectorizer(TweetsTruncatedVectorizer):
   def __init__(self):
-    self.vectorizer = TfidfVectorizer(stop_words='english',min_df=5, sublinear_tf=True)
+    self.vectorizer = TfidfVectorizer(stop_words='english',min_df=5)#, sublinear_tf=True)
     self.wordnet = WordNetLemmatizer()
 
   def fit_transform(self, users):
@@ -176,6 +176,45 @@ class TweetsInstagramLemmatizedVectorizer(TweetsTruncatedVectorizer):
       timeline_insta = [''.join(remove_tweet_noise(insta.text)) for insta in user.instagram]
       #print timeline_insta
       timeline = timeline + timeline_insta
+      lemmatized = []
+      for tweet in timeline:
+        lemma = [self.wordnet.lemmatize(word) for word in tweet.split()]
+        lemmatized.append(' '.join(lemma))
+      
+      join_tweets.append(''.join(lemmatized))
+
+    return self.vectorizer.transform([usertweets for usertweets in join_tweets])
+
+class InstagramLemmatizedVectorizer(TweetsTruncatedVectorizer):
+  def __init__(self):
+    self.vectorizer = TfidfVectorizer(stop_words='english',min_df=5)#, sublinear_tf=True)
+    self.wordnet = WordNetLemmatizer()
+
+  def fit_transform(self, users):
+    join_tweets = []
+    
+    for user in users:
+      #timeline = [''.join(remove_tweet_noise(tweet.text)) for tweet in user.twitter]
+      timeline = [''.join(remove_tweet_noise(insta.text)) for insta in user.instagram]
+      #print timeline_insta
+      #timeline = timeline + timeline_insta
+      lemmatized = []
+      for tweet in timeline:
+        lemma = [self.wordnet.lemmatize(word) for word in tweet.split()]
+        lemmatized.append(' '.join(lemma))
+      
+      join_tweets.append(''.join(lemmatized))
+
+    return self.vectorizer.fit_transform([usertweets for usertweets in join_tweets])
+
+  def transform(self, users):
+    join_tweets = []
+    
+    for user in users:
+      #timeline = [''.join(remove_tweet_noise(tweet.text)) for tweet in user.twitter]
+      timeline = [''.join(remove_tweet_noise(insta.text)) for insta in user.instagram]
+      #print timeline_insta
+      #timeline = timeline + timeline_insta
       lemmatized = []
       for tweet in timeline:
         lemma = [self.wordnet.lemmatize(word) for word in tweet.split()]

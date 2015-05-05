@@ -171,7 +171,7 @@ def get_facts(statistics_dict):
 def run(filepath):
 	user_list = os.listdir(filepath)
 	statistics = get_statistics(user_list)
-	pickle.dump(statistics,open('statistics'+'.pkl','wb'))
+	pickle.dump(statistics,open('statistics_new'+'.pkl','wb'))
 	get_facts(statistics)
 	#generate_statistics(statistics)
 
