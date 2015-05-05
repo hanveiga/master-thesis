@@ -242,7 +242,10 @@ def ActiveLearningUserStop(user, dict_of_classifiers, initial_num_tweets=1, alph
 				iterations += skip
 				#print iterations
 				#print skip
-				if iterations == 10:
+				print iterations
+				if iterations == 5:
+					skip = 10
+				if iterations == 45:
 					print 'end'
 					return error_dict
 
@@ -356,12 +359,12 @@ def get_error_incremental_learning(train, test, classifier_type, list_of_venues,
 	# pass a matrix back, users x incrementals
 	list_of_classifiers = train_classifiers(train, classifier_type, list_of_venues)
 	errors = []
-	iterations = 2
+	iterations = 1 
 	information_gain = []
 	accuracy_gain = []
 	for user in test:
 		for iteration in range(iterations):
-			error = ActiveLearningUserStop(user,list_of_classifiers, alpha)
+			error = ActiveLearningUserStop(user,list_of_classifiers, alpha= alpha)
 			#print infgain
 			errors.append(error)
 			#information_gain.append(infgain)
@@ -460,7 +463,7 @@ def plot_confusion(list_dictionaries, filename):
 		
 		count = count + 1
 
-def aggregate_errors(dict_errors):
+def aggregate_errors(list_dictionaries):
 	num_users = len(list_dictionaries)
 	venues = list_dictionaries[0].keys()
 
@@ -531,7 +534,7 @@ if __name__ =='__main__':
 	list_of_venues = ['Church']#, 'Furniture / Home Store', 'Japanese Restaurant', 'Resort', 'Taco Place']
 	errors = get_errors(full_data_2, ProgressiveEnsembleTweetClassifier, list_of_venues, folds=10, alpha=float(delta))
 
-	pickle.dump(errors,open('29_april_delta' + str(delta) + '.pkl','wb'))
+	pickle.dump(errors,open('1_may_alpha_' + str(delta) + '_.pkl','wb'))
 	#pickle.dump(infos,open('16april_informationgain_debug2_gym.pkl','wb'))
 	#pickle.dump(accs,open('16april_accgain_debug2_gym.pkl','wb'))
 	#errors = pickle.load(open('23_april_delta1.pkl','rb'))
