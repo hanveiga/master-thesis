@@ -24,9 +24,11 @@ def search_on_user(api, user_name, search_term):
     list_of_tweets = []
     counter = 0
     for tweet in c.items():
+        print tweet.text
         limit.check_remaining_calls(api)
         counter = counter + 1
-        tweet_text = tweet.text.encode('cp850', errors='replace').decode('cp850')
+        #tweet_text = tweet.text.encode('cp850', errors='replace').decode('cp850')
+        tweet_text = tweet.text
         regex = r'https?://[^\s<>"]+|www\.[^\s<>"]+'
         match = re.search(regex, tweet_text)
         if match:
@@ -35,8 +37,8 @@ def search_on_user(api, user_name, search_term):
         #if counter > 0:
         #    break # this essentially makes the loop only look at the first result from the search... makes code quicker but may be prone to errors
     if counter == 0:
-        return 'null' 
-    
+        return 'null'
+
     return list_of_tweets[0]
 
 def search_tweets_by_key(auth, xpost_term, xpost_term_2,filename):
@@ -45,10 +47,15 @@ def search_tweets_by_key(auth, xpost_term, xpost_term_2,filename):
     limit.check_remaining_calls(api)
     c = tweepy.Cursor(api.search, q=xpost_term + ' -RT' + ' lang:en', lang="en")
     limit.check_remaining_calls(api)
-    
-    csv_file = open(filename+'.csv','a')
+
+    # save nicknames
+    csv_file = open(filename+'2'+'.csv','a')
     csv_writer = csv.writer(csv_file,delimiter=';')
-    
+
+    # save ids
+    csv_ids = open('user_ids_2'+'.csv','a')
+    csv_ids_writer = csv.writer(csv_ids,delimiter=';')
+
     linking = []
 
     for tweet in c.items():
@@ -60,6 +67,8 @@ def search_tweets_by_key(auth, xpost_term, xpost_term_2,filename):
             link = match.group()
 	    limit.check_remaining_calls(api)
             response = search_on_user(api,tweet.user.screen_name,xpost_term_2)
+            print response
+            #print lol
             limit.check_remaining_calls(api)
 	    #print response
             if response is 'null':
@@ -71,23 +80,28 @@ def search_tweets_by_key(auth, xpost_term, xpost_term_2,filename):
                 #except:
                 #    pass
             else:
-                try:
+                #try:
                     print 'found instagram'
                     instagram_user = get_insta_user(response)
+                    print instagram_user
                     if len(instagram_user[0]) < 2:
                         print "name too short, probably error"
-                    else: 
-                        user = [tweet.user.screen_name,instagram_user[0],link]
+                    else:
+                        user = [tweet.user.screen_name,instagram_user[1],link]
+                        userids = [tweet.user.id,instagram_user[0],link]
+                        print 'user linked:'
                         print [tweet.user.screen_name,instagram_user[1],link]
                         linking.append(user)
                         csv_writer.writerow(user)
-                except:
-                    pass
+                        csv_ids_writer.writerow(userids)
+                #except:
+                #    pass
 
         if len(linking)>=500: # just some limit of found users, used for testing code
             break
 
-    csv_file.close()    
+    csv_file.close()
+    csv_ids.close()
 
 
 if __name__=='__main__':
